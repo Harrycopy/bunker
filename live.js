@@ -17,6 +17,25 @@
     async signUp(email, password) { const r = await sb.auth.signUp({ email, password, options: { emailRedirectTo: here() } }); if (r.error) throw r.error; L.session = r.data.session; return r.data.session; },
     // esqueci a senha: o Supabase manda um link; ao voltar por ele, a pessoa define a senha nova aqui
     async recover(email) { must(await sb.auth.resetPasswordForEmail(email, { redirectTo: here() })); },
+    // o link do e-mail volta para o Bunker antigo (o endereço novo não está na lista do Supabase):
+    // aqui a pessoa cola o endereço do link e o código dele abre a sessão no site novo
+    async useEmailLink(raw) {
+      const found = String(raw).match(/https?:\/\/\S+/);
+      if (!found) throw new Error('Cole o endereço completo do link, começando com https://');
+      let u = new URL(found[0]);
+      const inner = u.searchParams.get('q') || u.searchParams.get('url') || u.searchParams.get('u');
+      if (inner && /^https?:\/\//.test(inner)) u = new URL(inner); // link embrulhado pelo Gmail ou Outlook
+      const h = new URLSearchParams(u.hash.replace(/^#/, ''));
+      if (h.get('access_token') && h.get('refresh_token')) {
+        const r = await sb.auth.setSession({ access_token: h.get('access_token'), refresh_token: h.get('refresh_token') });
+        if (r.error) throw r.error; L.session = r.data.session; return h.get('type') || 'magiclink';
+      }
+      const token = u.searchParams.get('token_hash') || u.searchParams.get('token');
+      const type = u.searchParams.get('type') || 'recovery';
+      if (!token) throw new Error('Esse endereço não tem o código de acesso. Copie o link do botão do e-mail, sem clicar nele.');
+      const r = await sb.auth.verifyOtp({ token_hash: token, type });
+      if (r.error) throw r.error; L.session = r.data.session; return type;
+    },
     async setPassword(password) { must(await sb.auth.updateUser({ password })); },
     async signOut() { try { await sb.auth.signOut(); } catch (e) { /* sessão já caiu */ } L.session = null; L.me = null; },
 

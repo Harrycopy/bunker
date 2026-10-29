@@ -129,13 +129,14 @@
       </section>
       <section class="auth-r"><form class="auth-card" data-form="auth" novalidate>
         <span class="auth-ic">${IC.shield}</span>
-        <h2>${m === 'signup' ? 'Criar acesso' : m === 'forgot' ? 'Esqueci a senha' : 'Acessar workspace'}</h2>
-        <p class="muted">${m === 'signup' ? 'Para quem já foi convidado pela equipe.' : m === 'forgot' ? 'Mandamos um link para o seu e-mail. Clique nele e crie a senha nova aqui no Bunker.' : 'Use o e-mail autorizado pela equipe. A senha é a do Bunker (não a do Traffic Hub).'}</p>
-        <label class="f"><span>E-mail</span><input name="email" type="email" autocomplete="username" maxlength="255" required></label>
-        ${m === 'forgot' ? '' : `<label class="f"><span>Senha</span><input name="password" type="password" autocomplete="${m === 'signup' ? 'new-password' : 'current-password'}" minlength="6"></label>`}
+        <h2>${m === 'signup' ? 'Criar acesso' : m === 'forgot' ? 'Esqueci a senha' : m === 'link' ? 'Colar o link do e-mail' : 'Acessar workspace'}</h2>
+        <p class="muted">${m === 'signup' ? 'Para quem já foi convidado pela equipe.' : m === 'forgot' ? 'Mandamos um link para o seu e-mail. Não clique nele: copie o endereço do botão do e-mail e cole aqui no passo seguinte.' : m === 'link' ? 'No e-mail do Bunker, clique com o botão direito no botão (no celular, segure o dedo) e escolha "Copiar endereço do link". Cole abaixo. Cada link vale uma vez só.' : 'Use o e-mail autorizado pela equipe. A senha é a do Bunker (não a do Traffic Hub).'}</p>
+        ${m === 'link' ? `<label class="f"><span>Link do e-mail</span><textarea name="link" rows="4" required placeholder="https://shyzppzwaziaftdhjnwx.supabase.co/auth/v1/verify?token=..."></textarea></label>` : `<label class="f"><span>E-mail</span><input name="email" type="email" autocomplete="username" maxlength="255" required></label>`}
+        ${m === 'forgot' || m === 'link' ? '' : `<label class="f"><span>Senha</span><input name="password" type="password" autocomplete="${m === 'signup' ? 'new-password' : 'current-password'}" minlength="6"></label>`}
         <p class="err" role="alert"></p>
-        <button class="btn primary big">${m === 'signup' ? 'Criar acesso' : m === 'forgot' ? 'Enviar link para criar senha nova' : 'Entrar com senha'}</button>
+        <button class="btn primary big">${m === 'signup' ? 'Criar acesso' : m === 'forgot' ? 'Enviar link para criar senha nova' : m === 'link' ? 'Usar o link e continuar' : 'Entrar com senha'}</button>
         ${m === 'login' ? `<button type="button" class="link center" data-a="authMode" data-m="forgot">Esqueci a senha</button><button type="button" class="btn ghost big" data-a="magic">${IC.mail}Enviar link de acesso por e-mail</button>` : ''}
+        ${m === 'login' || m === 'forgot' ? `<button type="button" class="link center" data-a="authMode" data-m="link">Já recebi o e-mail: colar o link</button>` : ''}
         <button type="button" class="link center" data-a="authMode" data-m="${m === 'login' ? 'signup' : 'login'}">${m === 'login' ? 'Primeiro acesso? Criar senha' : 'Voltar para entrar com senha'}</button>
         <p class="note">Sem convite, o acesso não libera. Quem convida é o Edson, em Equipe.</p>
         <a class="link center" href="?demo">Ver a demo com dados de exemplo</a>
@@ -498,10 +499,20 @@
     if (k === 'auth') {
       const email = String(fd.get('email') || '').trim(), pw = String(fd.get('password') || ''); const err = f.querySelector('.err'); err.textContent = '';
       if (!LIVE) { UI.user = 'u_edson'; return render(); }
+      if (UI.mode === 'link') {
+        const link = String(fd.get('link') || '');
+        const b = f.querySelector('button.primary'); b.disabled = true; UI.boot = true;
+        try {
+          const type = await LIVE.useEmailLink(link); UI.boot = false;
+          if (type === 'recovery') { UI.recovery = true; UI.mode = 'login'; return render(); }
+          UI.mode = 'login'; await boot();
+        } catch (x) { UI.boot = false; b.disabled = false; err.textContent = /expired|invalid|not found|otp/i.test(x.message || '') ? 'Esse link já foi usado ou venceu. Peça um novo em "Esqueci a senha" e cole sem clicar nele.' : errText(x); }
+        return;
+      }
       if (UI.mode === 'forgot') {
         if (!/^\S+@\S+\.\S+$/.test(email)) { err.textContent = 'Digite um e-mail válido.'; return; }
         const b = f.querySelector('button.primary'); b.disabled = true;
-        try { await LIVE.recover(email); err.style.color = 'var(--ok)'; err.textContent = 'Pronto. Abra o e-mail do Bunker, clique no link e crie a senha nova.'; } catch (x) { err.textContent = errText(x); } finally { b.disabled = false; }
+        try { await LIVE.recover(email); err.style.color = 'var(--ok)'; err.textContent = 'Pronto. No e-mail, copie o endereço do botão (sem clicar) e cole em "Já recebi o e-mail: colar o link".'; } catch (x) { err.textContent = errText(x); } finally { b.disabled = false; }
         return;
       }
       if (pw.length < 6) { err.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
