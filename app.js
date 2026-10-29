@@ -9,7 +9,7 @@
   const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sem armazenamento */ } } };
   const empty = () => ({ pages: [], people: [], activity: [], invites: [] });
   let DB = LIVE ? empty() : (store.get('bunker-demo') && store.get('bunker-demo').v === window.BUNKER_SEED_VERSION ? store.get('bunker-demo') : window.buildBunkerSeed());
-  const UI = { user: LIVE ? null : (qp.get('as') || 'u_edson'), boot: !!LIVE, denied: false, deniedWhy: '', mode: 'login', briefs: { q: '', niche: '', sort: 'recent', view: 'grid' }, cal: null, ctl: 'all', preview: {} };
+  const UI = { user: LIVE ? null : (qp.get('as') || 'u_edson'), boot: !!LIVE, denied: false, deniedWhy: '', mode: 'login', recovery: /type=recovery/.test(location.hash), briefs: { q: '', niche: '', sort: 'recent', view: 'grid' }, cal: null, ctl: 'all', preview: {} };
   const commit = () => { if (!LIVE) store.set('bunker-demo', DB); };
 
   // ---------- utilidades ----------
@@ -129,17 +129,24 @@
       </section>
       <section class="auth-r"><form class="auth-card" data-form="auth" novalidate>
         <span class="auth-ic">${IC.shield}</span>
-        <h2>${m === 'signup' ? 'Criar acesso' : 'Acessar workspace'}</h2>
-        <p class="muted">${m === 'signup' ? 'Para quem já foi convidado pela equipe.' : 'Use o e-mail autorizado pela equipe. O mesmo login do Bunker.'}</p>
+        <h2>${m === 'signup' ? 'Criar acesso' : m === 'forgot' ? 'Esqueci a senha' : 'Acessar workspace'}</h2>
+        <p class="muted">${m === 'signup' ? 'Para quem já foi convidado pela equipe.' : m === 'forgot' ? 'Mandamos um link para o seu e-mail. Clique nele e crie a senha nova aqui no Bunker.' : 'Use o e-mail autorizado pela equipe. A senha é a do Bunker (não a do Traffic Hub).'}</p>
         <label class="f"><span>E-mail</span><input name="email" type="email" autocomplete="username" maxlength="255" required></label>
-        <label class="f"><span>Senha</span><input name="password" type="password" autocomplete="${m === 'signup' ? 'new-password' : 'current-password'}" minlength="6"></label>
+        ${m === 'forgot' ? '' : `<label class="f"><span>Senha</span><input name="password" type="password" autocomplete="${m === 'signup' ? 'new-password' : 'current-password'}" minlength="6"></label>`}
         <p class="err" role="alert"></p>
-        <button class="btn primary big" data-kind="${m === 'signup' ? 'signup' : 'login'}">${m === 'signup' ? 'Criar acesso' : 'Entrar com senha'}</button>
-        ${m === 'signup' ? '' : `<button type="button" class="btn ghost big" data-a="magic">${IC.mail}Enviar link de acesso por e-mail</button>`}
-        <button type="button" class="link center" data-a="authMode">${m === 'signup' ? 'Já tenho senha: entrar' : 'Primeiro acesso? Criar senha'}</button>
+        <button class="btn primary big">${m === 'signup' ? 'Criar acesso' : m === 'forgot' ? 'Enviar link para criar senha nova' : 'Entrar com senha'}</button>
+        ${m === 'login' ? `<button type="button" class="link center" data-a="authMode" data-m="forgot">Esqueci a senha</button><button type="button" class="btn ghost big" data-a="magic">${IC.mail}Enviar link de acesso por e-mail</button>` : ''}
+        <button type="button" class="link center" data-a="authMode" data-m="${m === 'login' ? 'signup' : 'login'}">${m === 'login' ? 'Primeiro acesso? Criar senha' : 'Voltar para entrar com senha'}</button>
         <p class="note">Sem convite, o acesso não libera. Quem convida é o Edson, em Equipe.</p>
         <a class="link center" href="?demo">Ver a demo com dados de exemplo</a>
       </form></section></div>`;
+  }
+  function viewNewPassword() {
+    return `<div class="denied"><div class="stripe big"></div><form class="denied-in auth-card" data-form="newpw" novalidate><span class="auth-ic">${IC.lock}</span><h2>Criar senha nova</h2>
+      <p class="muted">Você entrou pelo link do e-mail. Escolha a senha nova do Bunker (mínimo de 6 caracteres).</p>
+      <label class="f"><span>Senha nova</span><input name="p1" type="password" autocomplete="new-password" minlength="6" required></label>
+      <label class="f"><span>Repita a senha</span><input name="p2" type="password" autocomplete="new-password" minlength="6" required></label>
+      <p class="err" role="alert"></p><button class="btn primary big">Salvar senha e entrar</button></form></div>`;
   }
   function viewDenied() {
     return `<div class="denied"><div class="stripe big"></div><div class="denied-in"><span class="auth-ic">${IC.lock}</span><h2>Seu e-mail ainda não está na equipe</h2>
@@ -405,6 +412,7 @@
   // ---------- render ----------
   function render() {
     if (UI.boot) { app.innerHTML = `<div class="boot"><div class="stripe big"></div><b>BUNKER</b><p>Abrindo o bunker…</p></div>`; return; }
+    if (UI.recovery && LIVE && LIVE.session) { app.innerHTML = viewNewPassword(); document.title = 'Bunker · Senha nova'; return; }
     if (!UI.user) { app.innerHTML = viewAuth(); document.title = 'Bunker · Entrar'; return; }
     if (UI.denied) { app.innerHTML = viewDenied(); return; }
     const r = route(); let body, active = r.name, title = 'Painel';
@@ -433,7 +441,7 @@
     closeModal, palette,
     theme: () => { const d = !isDark(); document.documentElement.dataset.theme = d ? 'dark' : 'light'; try { localStorage.setItem('bunker-theme', d ? 'dark' : 'light'); } catch (e) { /* ok */ } render(); },
     signOut: async () => { if (LIVE) { if (stopListen) stopListen(); stopListen = null; await LIVE.signOut(); DB = empty(); } UI.user = null; UI.denied = false; render(); },
-    authMode: () => { UI.mode = UI.mode === 'signup' ? 'login' : 'signup'; render(); },
+    authMode: (el) => { UI.mode = el.dataset.m || 'login'; render(); },
     magic: async (el) => {
       const f = el.closest('form'); const email = String(new FormData(f).get('email') || '').trim(); const err = f.querySelector('.err');
       if (!/^\S+@\S+\.\S+$/.test(email)) { err.textContent = 'Digite um e-mail válido.'; return; }
@@ -490,6 +498,12 @@
     if (k === 'auth') {
       const email = String(fd.get('email') || '').trim(), pw = String(fd.get('password') || ''); const err = f.querySelector('.err'); err.textContent = '';
       if (!LIVE) { UI.user = 'u_edson'; return render(); }
+      if (UI.mode === 'forgot') {
+        if (!/^\S+@\S+\.\S+$/.test(email)) { err.textContent = 'Digite um e-mail válido.'; return; }
+        const b = f.querySelector('button.primary'); b.disabled = true;
+        try { await LIVE.recover(email); err.style.color = 'var(--ok)'; err.textContent = 'Pronto. Abra o e-mail do Bunker, clique no link e crie a senha nova.'; } catch (x) { err.textContent = errText(x); } finally { b.disabled = false; }
+        return;
+      }
       if (pw.length < 6) { err.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
       const btn = f.querySelector('button.primary'); btn.disabled = true;
       try {
@@ -497,6 +511,14 @@
         else await LIVE.signIn(email, pw);
         await boot();
       } catch (x) { btn.disabled = false; err.textContent = /invalid/i.test(x.message || '') ? 'E-mail ou senha errados.' : errText(x); }
+    }
+    if (k === 'newpw') {
+      const p1 = String(fd.get('p1') || ''), p2 = String(fd.get('p2') || ''); const err = f.querySelector('.err');
+      if (p1.length < 6) { err.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
+      if (p1 !== p2) { err.textContent = 'As duas senhas não estão iguais.'; return; }
+      const b = f.querySelector('button.primary'); b.disabled = true;
+      try { await LIVE.setPassword(p1); UI.recovery = false; toast('Senha nova salva'); history.replaceState(null, '', location.pathname + '#/'); await boot(); } catch (x) { b.disabled = false; err.textContent = errText(x); }
+      return;
     }
     if (k === 'invite') {
       const email = String(fd.get('email') || '').trim().toLowerCase();
@@ -512,7 +534,9 @@
     UI.boot = true; render();
     try {
       await LIVE.getSession();
+      if (/access_token=|type=/.test(location.hash) && !UI.recovery) history.replaceState(null, '', location.pathname + location.search + '#/');
       if (!LIVE.session) { UI.boot = false; UI.user = null; return render(); }
+      if (UI.recovery) { UI.boot = false; return render(); }
       const id = await LIVE.identity();
       UI.user = LIVE.session.user.id;
       if (!id || !id.invited) { UI.denied = true; UI.deniedWhy = id ? id.reason : ''; UI.boot = false; return render(); }
@@ -523,7 +547,8 @@
     UI.boot = false; render();
   }
   if (LIVE) {
-    LIVE.sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT' && UI.user) { DB = empty(); UI.user = null; render(); } if (ev === 'SIGNED_IN' && !UI.user && !UI.boot) boot(); });
+    LIVE.sb.auth.onAuthStateChange((ev) => {
+      if (ev === 'PASSWORD_RECOVERY') { UI.recovery = true; UI.boot = false; render(); return; } if (ev === 'SIGNED_OUT' && UI.user) { DB = empty(); UI.user = null; render(); } if (ev === 'SIGNED_IN' && !UI.user && !UI.boot) boot(); });
     document.addEventListener('visibilitychange', () => { if (UI.user && document.visibilityState === 'visible') reloadSoon(300); });
     window.addEventListener('online', () => reloadSoon(300));
   }

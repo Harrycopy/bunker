@@ -15,6 +15,9 @@
     async signIn(email, password) { const r = await sb.auth.signInWithPassword({ email, password }); if (r.error) throw r.error; L.session = r.data.session; return r.data.session; },
     async magic(email) { must(await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: here() } })); },
     async signUp(email, password) { const r = await sb.auth.signUp({ email, password, options: { emailRedirectTo: here() } }); if (r.error) throw r.error; L.session = r.data.session; return r.data.session; },
+    // esqueci a senha: o Supabase manda um link; ao voltar por ele, a pessoa define a senha nova aqui
+    async recover(email) { must(await sb.auth.resetPasswordForEmail(email, { redirectTo: here() })); },
+    async setPassword(password) { must(await sb.auth.updateUser({ password })); },
     async signOut() { try { await sb.auth.signOut(); } catch (e) { /* sessão já caiu */ } L.session = null; L.me = null; },
 
     // cria o perfil no primeiro login de quem foi convidado (mesma função que o Bunker antigo chama)
