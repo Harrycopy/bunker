@@ -68,6 +68,30 @@
   const docsLink = (p) => (isHost(p.docs, 'docs.google.com') ? p.docs : isHost(p.drive, 'docs.google.com') ? p.drive : '');
   const driveLink = (p) => (p.drive && !isHost(p.drive, 'docs.google.com') ? p.drive : '');
 
+  // ---------- Google Docs pronto no clique ----------
+  // Doc de lote "frio" leva de 15 a 30 s para o Google montar; depois de um pedido fica em ~1 s por um tempo.
+  // O Bunker faz esse pedido em segundo plano (sem login e sem baixar o conteúdo) para o Doc já estar pronto.
+  const WARM_MS = 20 * 60 * 1000; const warmed = {}; const warmQ = []; let warmRun = 0;
+  const gdocId = (u) => ((u || '').match(/\/document\/d\/([\w-]+)/) || [])[1];
+  function warm(p, first) {
+    const id = p && LIVE && gdocId(docsLink(p)); if (!id) return;
+    const at = warmQ.indexOf(id);
+    if (at >= 0) { if (first) { warmQ.splice(at, 1); warmQ.unshift(id); } return; }
+    if (Date.now() - (warmed[id] || 0) < WARM_MS) return;
+    warmed[id] = Date.now(); if (first) warmQ.unshift(id); else warmQ.push(id); pump();
+  }
+  function pump() {
+    while (warmRun < 3 && warmQ.length) {
+      const id = warmQ.shift(); const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 60000); warmRun++;
+      fetch('https://docs.google.com/document/d/' + id + '/edit', { mode: 'no-cors', credentials: 'omit', cache: 'no-store', signal: ac.signal })
+        .then(() => ac.abort()).catch(() => {}).finally(() => { clearTimeout(t); warmRun--; pump(); });
+    }
+  }
+  function warmAll() {
+    if (!LIVE || (navigator.connection && navigator.connection.saveData)) return;
+    briefs().slice().sort((a, b) => b.created.localeCompare(a.created)).forEach((p) => warm(p));
+  }
+
   // ---------- ícones ----------
   const I = (d) => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const IC = {
@@ -207,7 +231,7 @@
         <div class="niches">${tiles.map(({ n, list }) => nicheTile(n, list)).join('')}${otherList.length ? nicheTile(OTHER, otherList) : ''}</div></section>
       <section class="two">
         <div class="block"><header class="bh"><h2>Últimos briefs</h2><a class="link" href="#/briefs">Abrir lista ${IC.next}</a></header>
-          <ul class="recent">${recent.map((p) => { const n = nicheOf(p); return `<li><a class="r-main" href="#/p/${p.id}"><span class="r-emb" style="--c:${n.c}">${emblem(n, 18)}</span><span><b>${esc(p.title)}</b><small>${esc(n.name)} · ${esc(subido(p))}${p.dueDate === today ? ' · <em>hoje</em>' : ''}</small></span></a>${quick(p)}</li>`; }).join('') || '<li class="empty-s">Nenhum brief ainda.</li>'}</ul></div>
+          <ul class="recent">${recent.map((p) => { const n = nicheOf(p); return `<li data-warm="${p.id}"><a class="r-main" href="#/p/${p.id}"><span class="r-emb" style="--c:${n.c}">${emblem(n, 18)}</span><span><b>${esc(p.title)}</b><small>${esc(n.name)} · ${esc(subido(p))}${p.dueDate === today ? ' · <em>hoje</em>' : ''}</small></span></a>${quick(p)}</li>`; }).join('') || '<li class="empty-s">Nenhum brief ainda.</li>'}</ul></div>
         <div class="block"><header class="bh"><h2>Movimento</h2><a class="link" href="#/controle">Controle completo ${IC.next}</a></header>
           <ol class="feed">${feed.map(feedItem).join('') || '<li class="empty-s">Sem movimento ainda.</li>'}</ol></div>
       </section>
@@ -268,7 +292,7 @@
   }
   function card(p) {
     const n = nicheOf(p);
-    return `<article class="card" style="--c:${n.c}">
+    return `<article class="card" style="--c:${n.c}" data-warm="${p.id}">
       <a class="c-cover" href="#/p/${p.id}"><span class="c-glow"></span>${art(n) || emblem(n, 46)}<span class="c-niche">${esc(n.short)}</span><span class="c-kind">${p.kind.toUpperCase()}</span></a>
       <div class="c-body"><a class="c-title" href="#/p/${p.id}">${esc(p.title)}</a>
         <p class="c-meta">${esc(subido(p))} · ${esc((person(p.by) || {}).name || 'Membro')}</p>
@@ -277,7 +301,7 @@
   }
   function table(list) {
     return `<div class="tbl-w"><table class="tbl"><thead><tr><th>Brief</th><th>Nicho</th><th>Tipo</th><th>Subido em</th><th>Criado por</th><th>Links</th>${canEdit() ? '<th></th>' : ''}</tr></thead><tbody>
-      ${list.map((p) => { const n = nicheOf(p); return `<tr><td><a class="strong" href="#/p/${p.id}">${esc(p.title)}</a></td><td><span class="tag" style="--c:${n.c}"><i></i>${esc(n.name)}</span></td><td class="mono">${p.kind.toUpperCase()}</td><td class="mono">${esc(subido(p))}</td><td>${esc((person(p.by) || {}).name || 'Membro')}</td><td>${quick(p)}</td>${canEdit() ? `<td><button class="btn ghost xs danger" data-a="del" data-id="${p.id}">${IC.trash}</button></td>` : ''}</tr>`; }).join('')}
+      ${list.map((p) => { const n = nicheOf(p); return `<tr data-warm="${p.id}"><td><a class="strong" href="#/p/${p.id}">${esc(p.title)}</a></td><td><span class="tag" style="--c:${n.c}"><i></i>${esc(n.name)}</span></td><td class="mono">${p.kind.toUpperCase()}</td><td class="mono">${esc(subido(p))}</td><td>${esc((person(p.by) || {}).name || 'Membro')}</td><td>${quick(p)}</td>${canEdit() ? `<td><button class="btn ghost xs danger" data-a="del" data-id="${p.id}">${IC.trash}</button></td>` : ''}</tr>`; }).join('')}
     </tbody></table></div>`;
   }
 
@@ -290,6 +314,7 @@
     const hist = DB.activity.filter((a) => a.page === p.id);
     const docs = docsLink(p), drive = driveLink(p);
     const docId = docs && (docs.match(/\/d\/([\w-]+)/) || [])[1];
+    warm(p, true);
     return `<a class="back" href="${proc ? '#/processos' : '#/briefs'}">${IC.back}${esc(parent ? parent.title : 'Voltar')}</a>
       <section class="pg" style="--c:${proc ? '#a99be6' : n.c}">
         <div class="pg-cover"><span class="c-glow"></span>${proc ? `<span class="pg-emb">${IC.proc}</span>` : art(n, 'pg-art') || emblem(n, 64)}<div><p class="eyebrow">${proc ? 'Processo' : esc(p.kind.toUpperCase()) + ' · ' + esc(n.name)}</p>
@@ -474,6 +499,7 @@
       }, 'Remover', true);
     },
   };
+  document.addEventListener('pointerover', (e) => { const el = e.target.closest('[data-warm]'); if (el) warm(page(el.dataset.warm), true); });
   document.addEventListener('click', (e) => { const el = e.target.closest('[data-a]'); if (!el) return; const fn = A[el.dataset.a]; if (fn) { e.preventDefault(); fn(el, e); } });
   let qTimer;
   document.addEventListener('input', (e) => { if (e.target.dataset.in === 'q') { UI.briefs.q = e.target.value; clearTimeout(qTimer); qTimer = setTimeout(render, 120); } });
@@ -548,6 +574,7 @@
   document.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && UI.user && !UI.denied) { e.preventDefault(); palette(); } if (e.key === 'Escape' && modalRoot.classList.contains('on')) closeModal(); });
 
   // ---------- início ----------
+  let warmTimer = 0;
   async function boot() {
     if (!LIVE) { render(); return; }
     UI.boot = true; render();
@@ -562,6 +589,7 @@
       UI.denied = false;
       DB = await LIVE.load(canEdit()); ensureMe();
       if (stopListen) stopListen(); stopListen = LIVE.listen(() => reloadSoon());
+      warmAll(); if (!warmTimer) warmTimer = setInterval(warmAll, WARM_MS + 1000);
     } catch (e) { toast('Não carregou: ' + errText(e)); }
     UI.boot = false; render();
   }
