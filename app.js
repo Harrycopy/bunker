@@ -48,6 +48,7 @@
     const hay = fold(p.offer + ' ' + p.title);
     return NICHES.find((n) => n.re.test(hay)) || OTHER;
   }
+  const art = (n, cls) => (window.BunkerArt && window.BunkerArt(n.key, cls)) || '';
   const emblem = (n, size) => `<svg class="emb" viewBox="0 0 24 24" width="${size || 28}" height="${size || 28}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${n.icon}</svg>`;
 
   // ---------- estrutura ----------
@@ -214,7 +215,7 @@
   const kpi = (v, l, ic) => `<div class="kpi"><span class="k-ic">${ic}</span><b data-up="${typeof v === 'number' ? v : ''}">${v}</b><small>${esc(l)}</small></div>`;
   function nicheTile(n, list) {
     const last = list[0];
-    return `<a class="tile" href="#/briefs?n=${n.key}" style="--c:${n.c}"><span class="t-emb">${emblem(n, 34)}</span><span class="t-count">${list.length}</span><b>${esc(n.name)}</b><small>${last ? 'último: ' + esc(last.title.replace(/^BRIEF\s+(ADS|VSL)\s+/i, '')) + ' · ' + esc(ago(last.created)) : 'nenhum brief ainda'}</small></a>`;
+    return `<a class="tile" href="#/briefs?n=${n.key}" style="--c:${n.c}"><span class="t-emb">${art(n, 't-art') || emblem(n, 34)}</span><span class="t-count">${list.length}</span><b>${esc(n.name)}</b><small>${last ? 'último: ' + esc(last.title.replace(/^BRIEF\s+(ADS|VSL)\s+/i, '')) + ' · ' + esc(ago(last.created)) : 'nenhum brief ainda'}</small></a>`;
   }
   const quick = (p) => `<span class="q">${docsLink(p) ? `<a class="qb" href="${esc(safeUrl(docsLink(p)))}" target="_blank" rel="noopener" title="Abrir Google Docs">${IC.docs}</a>` : ''}${driveLink(p) ? `<a class="qb" href="${esc(safeUrl(driveLink(p)))}" target="_blank" rel="noopener" title="Abrir pasta do Drive">${IC.drive}</a>` : ''}</span>`;
   const ACT = { criou: ['criou', IC.plus, '#8fcfa8'], entrega: ['entrega', IC.cal, '#e8c96a'], drive: ['drive', IC.drive, '#7fb6e8'], moveu: ['moveu', IC.next, '#a99be6'] };
@@ -261,7 +262,7 @@
   function card(p) {
     const n = nicheOf(p);
     return `<article class="card" style="--c:${n.c}">
-      <a class="c-cover" href="#/p/${p.id}"><span class="c-glow"></span>${emblem(n, 46)}<span class="c-niche">${esc(n.short)}</span><span class="c-kind">${p.kind.toUpperCase()}</span></a>
+      <a class="c-cover" href="#/p/${p.id}"><span class="c-glow"></span>${art(n) || emblem(n, 46)}<span class="c-niche">${esc(n.short)}</span><span class="c-kind">${p.kind.toUpperCase()}</span></a>
       <div class="c-body"><a class="c-title" href="#/p/${p.id}">${esc(p.title)}</a>
         <p class="c-meta">${esc(subido(p))} · ${esc((person(p.by) || {}).name || 'Membro')}</p>
         <div class="c-act">${docsLink(p) ? `<a class="btn ghost xs" href="${esc(safeUrl(docsLink(p)))}" target="_blank" rel="noopener">${IC.docs}Docs</a>` : '<span class="miss">sem Docs</span>'}${driveLink(p) ? `<a class="btn ghost xs" href="${esc(safeUrl(driveLink(p)))}" target="_blank" rel="noopener">${IC.drive}Drive</a>` : '<span class="miss">sem Drive</span>'}
@@ -284,7 +285,7 @@
     const docId = docs && (docs.match(/\/d\/([\w-]+)/) || [])[1];
     return `<a class="back" href="${proc ? '#/processos' : '#/briefs'}">${IC.back}${esc(parent ? parent.title : 'Voltar')}</a>
       <section class="pg" style="--c:${proc ? '#a99be6' : n.c}">
-        <div class="pg-cover"><span class="c-glow"></span>${proc ? `<span class="pg-emb">${IC.proc}</span>` : emblem(n, 64)}<div><p class="eyebrow">${proc ? 'Processo' : esc(p.kind.toUpperCase()) + ' · ' + esc(n.name)}</p>
+        <div class="pg-cover"><span class="c-glow"></span>${proc ? `<span class="pg-emb">${IC.proc}</span>` : art(n, 'pg-art') || emblem(n, 64)}<div><p class="eyebrow">${proc ? 'Processo' : esc(p.kind.toUpperCase()) + ' · ' + esc(n.name)}</p>
           ${ed ? `<input class="pg-title" data-edit="title" value="${esc(p.title)}" maxlength="240" aria-label="Título">` : `<h1 class="pg-title">${esc(p.title)}</h1>`}</div></div>
         <div class="pg-actions">
           ${docs ? `<a class="btn primary big" href="${esc(safeUrl(docs))}" target="_blank" rel="noopener">${IC.docs}Abrir Google Docs${IC.ext}</a>` : '<span class="miss big">Sem Google Docs</span>'}

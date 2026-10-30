@@ -340,3 +340,17 @@ input.pg-title:hover { border-color: var(--line2); } input.pg-title:focus { bord
 @media (prefers-reduced-motion: reduce) { .stripe, .radar .sweep, .radar .ping, .live { animation-duration: 6s; } }
 .f textarea { width: 100%; min-height: 96px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg2); outline: none; resize: vertical; font-family: 'JetBrains Mono', monospace; font-size: 12px; word-break: break-all; }
 .f textarea:focus { border-color: color-mix(in srgb, var(--warn) 60%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 16%, transparent); }
+
+/* ilustração do nicho */
+.art { display: block; height: 100%; width: auto; overflow: visible; filter: drop-shadow(0 6px 18px color-mix(in srgb, var(--c) 45%, transparent)); }
+.c-cover { height: 150px; }
+.c-cover .art { position: relative; height: 128px; transition: transform .4s var(--ease); }
+.card:hover .c-cover .art { transform: scale(1.06) rotate(-1.5deg); }
+.t-art { height: 70px; margin: -6px 0 0 -10px; }
+.tile:hover .t-art { transform: scale(1.05); transition: transform .3s var(--ease); }
+.pg-art { flex: none; height: 132px; position: relative; }
+@media (max-width: 680px) { .t-art { height: 58px; } .pg-art { height: 110px; } }
+.c-niche, .c-kind { z-index: 1; }
+.c-niche { left: 10px; bottom: 8px; padding: 2px 7px; border-radius: 6px; background: rgba(10, 10, 12, .55); backdrop-filter: blur(4px); color: color-mix(in srgb, var(--c) 55%, #fff); }
+:root[data-theme="light"] .art .sp { fill: color-mix(in srgb, var(--c) 70%, #000); }
+:root[data-theme="light"] .art .ink { fill: #1f5e3f; }
