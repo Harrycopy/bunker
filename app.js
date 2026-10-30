@@ -130,7 +130,7 @@
       <section class="auth-r"><form class="auth-card" data-form="auth" novalidate>
         <span class="auth-ic">${IC.shield}</span>
         <h2>${m === 'signup' ? 'Criar acesso' : m === 'forgot' ? 'Esqueci a senha' : m === 'link' ? 'Colar o link do e-mail' : 'Acessar workspace'}</h2>
-        <p class="muted">${m === 'signup' ? 'Para quem já foi convidado pela equipe.' : m === 'forgot' ? 'Mandamos um link para o seu e-mail. Não clique nele: copie o endereço do botão do e-mail e cole aqui no passo seguinte.' : m === 'link' ? 'No e-mail do Bunker, clique com o botão direito no botão (no celular, segure o dedo) e escolha "Copiar endereço do link". Cole abaixo. Cada link vale uma vez só.' : 'Use o e-mail autorizado pela equipe. A senha é a do Bunker (não a do Traffic Hub).'}</p>
+        <p class="muted">${m === 'signup' ? 'Para quem já foi convidado pela equipe.' : m === 'forgot' ? 'Mandamos um link para o seu e-mail. Clique no botão do e-mail e crie a senha nova aqui no Bunker.' : m === 'link' ? 'No e-mail do Bunker, clique com o botão direito no botão (no celular, segure o dedo) e escolha "Copiar endereço do link". Cole abaixo. Cada link vale uma vez só.' : 'Use o e-mail autorizado pela equipe. A senha é a do Bunker (não a do Traffic Hub).'}</p>
         ${m === 'link' ? `<label class="f"><span>Link do e-mail</span><textarea name="link" rows="4" required placeholder="https://shyzppzwaziaftdhjnwx.supabase.co/auth/v1/verify?token=..."></textarea></label>` : `<label class="f"><span>E-mail</span><input name="email" type="email" autocomplete="username" maxlength="255" required></label>`}
         ${m === 'forgot' || m === 'link' ? '' : `<label class="f"><span>Senha</span><input name="password" type="password" autocomplete="${m === 'signup' ? 'new-password' : 'current-password'}" minlength="6"></label>`}
         <p class="err" role="alert"></p>
@@ -512,7 +512,7 @@
       if (UI.mode === 'forgot') {
         if (!/^\S+@\S+\.\S+$/.test(email)) { err.textContent = 'Digite um e-mail válido.'; return; }
         const b = f.querySelector('button.primary'); b.disabled = true;
-        try { await LIVE.recover(email); err.style.color = 'var(--ok)'; err.textContent = 'Pronto. No e-mail, copie o endereço do botão (sem clicar) e cole em "Já recebi o e-mail: colar o link".'; } catch (x) { err.textContent = errText(x); } finally { b.disabled = false; }
+        try { await LIVE.recover(email); err.style.color = 'var(--ok)'; err.textContent = 'Pronto. Abra o e-mail do Bunker, clique no botão e crie a senha nova.'; } catch (x) { err.textContent = errText(x); } finally { b.disabled = false; }
         return;
       }
       if (pw.length < 6) { err.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
