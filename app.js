@@ -9,7 +9,7 @@
   const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sem armazenamento */ } } };
   const empty = () => ({ pages: [], people: [], activity: [], invites: [] });
   let DB = LIVE ? empty() : (store.get('bunker-demo') && store.get('bunker-demo').v === window.BUNKER_SEED_VERSION ? store.get('bunker-demo') : window.buildBunkerSeed());
-  const UI = { user: LIVE ? null : (qp.get('as') || 'u_edson'), boot: !!LIVE, denied: false, deniedWhy: '', mode: 'login', recovery: /type=recovery/.test(location.hash), briefs: { q: '', niche: '', sort: 'recent', view: 'grid' }, cal: null, ctl: 'all', preview: {} };
+  const UI = { user: LIVE ? null : (qp.get('as') || 'u_edson'), boot: !!LIVE, denied: false, deniedWhy: '', mode: 'login', recovery: /type=recovery/.test(location.hash), briefs: { q: '', niche: '', sort: 'niche', view: 'grid' }, cal: null, ctl: 'all', preview: {} };
   const commit = () => { if (!LIVE) store.set('bunker-demo', DB); };
 
   // ---------- utilidades ----------
@@ -48,6 +48,8 @@
     const hay = fold(p.offer + ' ' + p.title);
     return NICHES.find((n) => n.re.test(hay)) || OTHER;
   }
+  const nicheIdx = (p) => { const i = NICHES.indexOf(nicheOf(p)); return i < 0 ? 99 : i; };
+  const lote = (p) => +((String(p.title).match(/lote\s*(\d+)/i) || [])[1] || 0);
   const art = (n, cls) => (window.BunkerArt && window.BunkerArt(n.key, cls)) || '';
   const emblem = (n, size) => `<svg class="emb" viewBox="0 0 24 24" width="${size || 28}" height="${size || 28}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${n.icon}</svg>`;
 
@@ -245,7 +247,7 @@
     if (B.niche) list = list.filter((p) => nicheOf(p).key === B.niche);
     if (B.kind) list = list.filter((p) => p.kind === B.kind);
     if (B.q) list = list.filter((p) => compact(p.title + ' ' + p.offer + ' ' + nicheOf(p).name).includes(compact(B.q)) || fold(p.title).includes(fold(B.q)));
-    const sorters = { recent: (a, b) => b.created.localeCompare(a.created), name: (a, b) => a.title.localeCompare(b.title, pt, { numeric: true }), niche: (a, b) => (NICHES.indexOf(nicheOf(a)) - NICHES.indexOf(nicheOf(b))) || a.title.localeCompare(b.title, pt, { numeric: true }) };
+    const sorters = { recent: (a, b) => b.created.localeCompare(a.created), name: (a, b) => a.title.localeCompare(b.title, pt, { numeric: true }), niche: (a, b) => (nicheIdx(a) - nicheIdx(b)) || (a.kind === b.kind ? 0 : a.kind === 'ads' ? -1 : 1) || (lote(b) - lote(a)) || a.title.localeCompare(b.title, pt, { numeric: true }) };
     list.sort(sorters[B.sort] || sorters.recent);
     const chips = [['', 'Todos', briefs().length]].concat(NICHES.filter((n) => counts[n.key]).map((n) => [n.key, n.name, counts[n.key]])).concat(counts.outro ? [['outro', 'Sem nicho', counts.outro]] : []);
     return `<div class="ph"><div><p class="eyebrow">Swipe de briefs</p><h1 class="title">Briefs</h1><p class="muted">${plural(list.length, 'brief', 'briefs')}${B.niche || B.q || B.kind ? ' com os filtros atuais' : ' no bunker'}.</p></div>
@@ -253,11 +255,16 @@
       <div class="bar">
         <label class="search">${IC.search}<input id="q" data-in="q" value="${esc(B.q)}" placeholder="Buscar por lote, nicho, título…"></label>
         <div class="seg">${[['', 'Todos'], ['ads', 'Ads'], ['vsl', 'VSL']].map(([k, l]) => `<button class="${(B.kind || '') === k ? 'on' : ''}" data-a="kind" data-k="${k}">${l}</button>`).join('')}</div>
-        <label class="sel"><span>Ordem</span><select data-ch="sort"><option value="recent"${B.sort === 'recent' ? ' selected' : ''}>Mais recentes</option><option value="name"${B.sort === 'name' ? ' selected' : ''}>Nome</option><option value="niche"${B.sort === 'niche' ? ' selected' : ''}>Nicho</option></select></label>
+        <label class="sel"><span>Ordem</span><select data-ch="sort"><option value="recent"${B.sort === 'recent' ? ' selected' : ''}>Mais recentes</option><option value="name"${B.sort === 'name' ? ' selected' : ''}>Nome</option><option value="niche"${B.sort === 'niche' ? ' selected' : ''}>Nicho e lote</option></select></label>
         <div class="seg">${[['grid', IC.grid, 'Galeria'], ['table', IC.list, 'Tabela']].map(([k, ic, l]) => `<button class="${B.view === k ? 'on' : ''}" data-a="view" data-k="${k}" title="${l}">${ic}</button>`).join('')}</div>
       </div>
       <div class="chips">${chips.map(([k, l, c]) => { const n = NICHES.find((x) => x.key === k); return `<button class="chip${(B.niche || '') === k ? ' on' : ''}" data-a="niche" data-k="${k}" ${n ? `style="--c:${n.c}"` : ''}>${n ? '<i></i>' : ''}${esc(l)}<b>${c}</b></button>`; }).join('')}</div>
-      ${!list.length ? `<div class="empty"><b>Nenhum brief com esses filtros.</b><button class="btn ghost sm" data-a="clear">Limpar filtros</button></div>` : B.view === 'table' ? table(list) : `<div class="gallery">${list.map(card).join('')}</div>`}`;
+      ${!list.length ? `<div class="empty"><b>Nenhum brief com esses filtros.</b><button class="btn ghost sm" data-a="clear">Limpar filtros</button></div>` : B.view === 'table' ? table(list) : B.sort === 'niche' ? grouped(list) : `<div class="gallery">${list.map(card).join('')}</div>`}`;
+  }
+  // galeria por nicho: um bloco por nicho, lotes do maior para o menor
+  function grouped(list) {
+    const groups = []; list.forEach((p) => { const n = nicheOf(p); const g = groups[groups.length - 1]; if (g && g.n === n) g.items.push(p); else groups.push({ n, items: [p] }); });
+    return groups.map(({ n, items }) => `<section class="grp" style="--c:${n.c}"><header class="grp-h"><span class="grp-emb">${emblem(n, 18)}</span><h2>${esc(n.name)}</h2><b>${plural(items.length, 'brief', 'briefs')}</b></header><div class="gallery">${items.map(card).join('')}</div></section>`).join('');
   }
   function card(p) {
     const n = nicheOf(p);

@@ -354,3 +354,10 @@ input.pg-title:hover { border-color: var(--line2); } input.pg-title:focus { bord
 .c-niche { left: 10px; bottom: 8px; padding: 2px 7px; border-radius: 6px; background: rgba(10, 10, 12, .55); backdrop-filter: blur(4px); color: color-mix(in srgb, var(--c) 55%, #fff); }
 :root[data-theme="light"] .art .sp { fill: color-mix(in srgb, var(--c) 70%, #000); }
 :root[data-theme="light"] .art .ink { fill: #1f5e3f; }
+
+/* galeria agrupada por nicho */
+.grp + .grp { margin-top: 30px; }
+.grp-h { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding-bottom: 10px; border-bottom: 1px solid color-mix(in srgb, var(--c) 35%, var(--line)); }
+.grp-emb { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.grp-h h2 { margin: 0; font: 400 20px/1 var(--fs); letter-spacing: .02em; }
+.grp-h b { margin-left: auto; font: 600 11px var(--fm); letter-spacing: .08em; text-transform: uppercase; color: var(--mute); }
