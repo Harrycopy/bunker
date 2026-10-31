@@ -1,7 +1,7 @@
 /* Dados de exemplo da demo (?demo). Nada aqui vem do banco real. */
 (function () {
   'use strict';
-  window.BUNKER_SEED_VERSION = 1;
+  window.BUNKER_SEED_VERSION = 2;
   window.buildBunkerSeed = function () {
     let s = 7; const r = () => ((s = (s * 16807) % 2147483647) / 2147483647);
     const NOW = Date.now();
@@ -19,6 +19,7 @@
     const pages = [
       { id: 'root_ads', title: '01 - Briefs de Ads', parent: null, kind: 'page', section: 'ads', sort: 20 },
       { id: 'root_proc', title: 'Processos', parent: null, kind: 'page', section: null, sort: 30 },
+      { id: 'root_ed', title: '02 - Briefs de Edição', parent: null, kind: 'page', section: null, sort: 25 },
     ];
     const plan = [['ED', 'Disfunção erétil', 13], ['DIABETES', 'Diabetes', 6], ['MEMO', 'Memória', 5], ['PULMAO', 'Pulmão', 5], ['EMAG', 'Emagrecimento', 4], ['HIPERTENSÃO', 'Hipertensão', 3], ['NEURO', 'Neuropatia', 3], ['VISAO', 'Visão', 2]];
     const activity = [];
@@ -37,6 +38,7 @@
       }
     });
     pages.push({ id: 'proc1', title: 'Rotina de copy', parent: 'root_proc', kind: 'page', section: null, sort: 1, offer: 'Rotina diária da equipe de copy: brief, escrita, revisão e entrega no Drive.', docs: 'https://docs.google.com/document/d/demo-rotina', drive: '', dueDate: at(30).slice(0, 10), dueTime: '10:00', by: 'u_edson', upBy: 'u_edson', created: at(30), updated: at(30) });
+    pages.push({ id: 'ed1', title: 'BRIEF EDIÇÃO ED 01', parent: 'root_ed', kind: 'page', section: null, sort: 2, offer: 'Disfunção erétil', docs: 'https://docs.google.com/document/d/demo-ed1', drive: 'https://drive.google.com/drive/folders/demo-ed1', created: at(0, 1) });
     pages.forEach((p) => { p.offer = p.offer || ''; p.docs = p.docs || ''; p.drive = p.drive || ''; p.by = p.by || 'u_edson'; p.created = p.created || at(42); p.updated = p.updated || p.created; p.dueDate = p.dueDate || null; p.dueTime = p.dueTime || ''; });
     const invites = [{ id: 'i1', email: 'munish@demo.local', role: 'membro', expires: at(-5), at: at(2) }];
     activity.sort((a, b) => b.at.localeCompare(a.at));

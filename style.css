@@ -361,3 +361,7 @@ input.pg-title:hover { border-color: var(--line2); } input.pg-title:focus { bord
 .grp-emb { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
 .grp-h h2 { margin: 0; font: 400 20px/1 var(--fs); letter-spacing: .02em; }
 .grp-h b { margin-left: auto; font: 600 11px var(--fm); letter-spacing: .08em; text-transform: uppercase; color: var(--mute); }
+/* aba Edição (31/10): filtro por nicho em links */
+.seg a { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 8px; color: var(--mute); font-weight: 500; font-size: 13px; text-decoration: none; }
+.seg a:hover { color: var(--fg); } .seg a.on { background: var(--s3); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line2); }
+.ph + .seg { margin: 0 0 18px; }

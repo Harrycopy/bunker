@@ -64,6 +64,11 @@
   const isBrief = (p) => p.kind === 'vsl' || p.kind === 'ads';
   const briefs = () => DB.pages.filter(isBrief);
   const processes = () => { const r = procRoot(); return r ? DB.pages.filter((p) => p.parent === r.id) : []; };
+  // briefings de edição: filhos da raiz "02 - Briefs de Edição" (kind page, nicho no offer)
+  const edRoot = () => roots().find((p) => fold(p.title).includes('edicao'));
+  const isEdit = (p) => { const r = edRoot(); return !!(r && p && p.parent === r.id); };
+  const edicoes = () => { const r = edRoot(); return r ? DB.pages.filter((p) => p.parent === r.id) : []; };
+  const kindLabel = (p) => (isEdit(p) ? 'EDIÇÃO' : String(p.kind).toUpperCase());
   const subido = (p) => (p.dueDate ? fmtDay(p.dueDate) + (p.dueTime ? ' · ' + p.dueTime : '') : fmtDT(p.created));
   const docsLink = (p) => (isHost(p.docs, 'docs.google.com') ? p.docs : isHost(p.drive, 'docs.google.com') ? p.drive : '');
   const driveLink = (p) => (p.drive && !isHost(p.drive, 'docs.google.com') ? p.drive : '');
@@ -98,6 +103,7 @@
     home: I('<path d="M3 11 12 4l9 7v9H3z"/><path d="M9 20v-6h6v6"/>'), brief: I('<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>'),
     proc: I('<path d="M4 6h16M4 12h10M4 18h6"/><circle cx="18" cy="16" r="3"/>'), cal: I('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
     pulse: I('<path d="M3 12h4l2-6 4 12 2-6h6"/>'), team: I('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.5-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M22 20c-.5-2.4-1.9-4.1-3.8-4.9"/>'),
+    film: I('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>'),
     plus: I('<path d="M12 5v14M5 12h14"/>'), search: I('<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>'), ext: I('<path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/>'),
     docs: I('<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/>'), drive: I('<path d="M8 3h8l6 10-4 7H6l-4-7z"/><path d="m8 3 6 10H2M16 3 10 13M22 13H10l-4 7"/>'),
     trash: I('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'), back: I('<path d="M15 18 9 12l6-6"/>'), next: I('<path d="m9 6 6 6-6 6"/>'), x: I('<path d="M6 6l12 12M18 6 6 18"/>'),
@@ -128,7 +134,7 @@
   // ---------- casca ----------
   function shell(body, active) {
     const u = me();
-    const nav = [['painel', '#/', IC.home, 'Painel'], ['briefs', '#/briefs', IC.brief, 'Briefs'], ['processos', '#/processos', IC.proc, 'Processos'], ['calendario', '#/calendario', IC.cal, 'Calendário'], ['controle', '#/controle', IC.pulse, 'Controle'], ['equipe', '#/equipe', IC.team, 'Equipe']];
+    const nav = [['painel', '#/', IC.home, 'Painel'], ['briefs', '#/briefs', IC.brief, 'Briefs'], ['edicao', '#/edicao', IC.film, 'Edição'], ['processos', '#/processos', IC.proc, 'Processos'], ['calendario', '#/calendario', IC.cal, 'Calendário'], ['controle', '#/controle', IC.pulse, 'Controle'], ['equipe', '#/equipe', IC.team, 'Equipe']];
     return `${LIVE ? '' : `<div class="demo">${IC.lock}<span>Demo com dados de exemplo · nada aqui mexe no Bunker real</span><a href="./">Entrar no Bunker real</a></div>`}
     <div class="stripe" aria-hidden="true"></div>
     <header class="top"><div class="top-in">
@@ -236,6 +242,7 @@
           <ol class="feed">${feed.map(feedItem).join('') || '<li class="empty-s">Sem movimento ainda.</li>'}</ol></div>
       </section>
       <section class="block"><header class="bh"><h2>Ritmo de entregas</h2><span class="muted small">últimas 12 semanas · cada quadrado é um dia</span></header>${heatmap()}</section>
+      ${edicoes().length ? `<section class="block"><header class="bh"><h2>Briefing de edição</h2><a class="link" href="#/edicao">Ver todos ${IC.next}</a></header><div class="gallery">${edicoes().slice().sort((a, b) => b.created.localeCompare(a.created)).slice(0, 4).map(card).join('')}</div></section>` : ''}
       ${processes().length ? `<section class="block"><header class="bh"><h2>Processos</h2><a class="link" href="#/processos">Ver processos ${IC.next}</a></header><div class="procs">${processes().map(procCard).join('')}</div></section>` : ''}`;
   }
   const kpi = (v, l, ic) => `<div class="kpi"><span class="k-ic">${ic}</span><b data-up="${typeof v === 'number' ? v : ''}">${v}</b><small>${esc(l)}</small></div>`;
@@ -286,14 +293,15 @@
       ${!list.length ? `<div class="empty"><b>Nenhum brief com esses filtros.</b><button class="btn ghost sm" data-a="clear">Limpar filtros</button></div>` : B.view === 'table' ? table(list) : B.sort === 'niche' ? grouped(list) : `<div class="gallery">${list.map(card).join('')}</div>`}`;
   }
   // galeria por nicho: um bloco por nicho, lotes do maior para o menor
-  function grouped(list) {
+  function grouped(list, cardFn, um, varios) {
+    cardFn = cardFn || card; um = um || 'brief'; varios = varios || 'briefs';
     const groups = []; list.forEach((p) => { const n = nicheOf(p); const g = groups[groups.length - 1]; if (g && g.n === n) g.items.push(p); else groups.push({ n, items: [p] }); });
-    return groups.map(({ n, items }) => `<section class="grp" style="--c:${n.c}"><header class="grp-h"><span class="grp-emb">${emblem(n, 18)}</span><h2>${esc(n.name)}</h2><b>${plural(items.length, 'brief', 'briefs')}</b></header><div class="gallery">${items.map(card).join('')}</div></section>`).join('');
+    return groups.map(({ n, items }) => `<section class="grp" style="--c:${n.c}"><header class="grp-h"><span class="grp-emb">${emblem(n, 18)}</span><h2>${esc(n.name)}</h2><b>${plural(items.length, um, varios)}</b></header><div class="gallery">${items.map(cardFn).join('')}</div></section>`).join('');
   }
   function card(p) {
     const n = nicheOf(p);
     return `<article class="card" style="--c:${n.c}" data-warm="${p.id}">
-      <a class="c-cover" href="#/p/${p.id}"><span class="c-glow"></span>${art(n) || emblem(n, 46)}<span class="c-niche">${esc(n.short)}</span><span class="c-kind">${p.kind.toUpperCase()}</span></a>
+      <a class="c-cover" href="#/p/${p.id}"><span class="c-glow"></span>${art(n) || emblem(n, 46)}<span class="c-niche">${esc(n.short)}</span><span class="c-kind">${esc(kindLabel(p))}</span></a>
       <div class="c-body"><a class="c-title" href="#/p/${p.id}">${esc(p.title)}</a>
         <p class="c-meta">${esc(subido(p))} · ${esc((person(p.by) || {}).name || 'Membro')}</p>
         <div class="c-act">${docsLink(p) ? `<a class="btn ghost xs" href="${esc(safeUrl(docsLink(p)))}" target="_blank" rel="noopener">${IC.docs}Docs</a>` : '<span class="miss">sem Docs</span>'}${driveLink(p) ? `<a class="btn ghost xs" href="${esc(safeUrl(driveLink(p)))}" target="_blank" rel="noopener">${IC.drive}Drive</a>` : '<span class="miss">sem Drive</span>'}
@@ -301,7 +309,7 @@
   }
   function table(list) {
     return `<div class="tbl-w"><table class="tbl"><thead><tr><th>Brief</th><th>Nicho</th><th>Tipo</th><th>Subido em</th><th>Criado por</th><th>Links</th>${canEdit() ? '<th></th>' : ''}</tr></thead><tbody>
-      ${list.map((p) => { const n = nicheOf(p); return `<tr data-warm="${p.id}"><td><a class="strong" href="#/p/${p.id}">${esc(p.title)}</a></td><td><span class="tag" style="--c:${n.c}"><i></i>${esc(n.name)}</span></td><td class="mono">${p.kind.toUpperCase()}</td><td class="mono">${esc(subido(p))}</td><td>${esc((person(p.by) || {}).name || 'Membro')}</td><td>${quick(p)}</td>${canEdit() ? `<td><button class="btn ghost xs danger" data-a="del" data-id="${p.id}">${IC.trash}</button></td>` : ''}</tr>`; }).join('')}
+      ${list.map((p) => { const n = nicheOf(p); return `<tr data-warm="${p.id}"><td><a class="strong" href="#/p/${p.id}">${esc(p.title)}</a></td><td><span class="tag" style="--c:${n.c}"><i></i>${esc(n.name)}</span></td><td class="mono">${esc(kindLabel(p))}</td><td class="mono">${esc(subido(p))}</td><td>${esc((person(p.by) || {}).name || 'Membro')}</td><td>${quick(p)}</td>${canEdit() ? `<td><button class="btn ghost xs danger" data-a="del" data-id="${p.id}">${IC.trash}</button></td>` : ''}</tr>`; }).join('')}
     </tbody></table></div>`;
   }
 
@@ -309,15 +317,15 @@
   function viewPage(id) {
     const p = page(id);
     if (!p) return `<div class="empty big"><b>Página não encontrada.</b><a class="btn ghost" href="#/">Voltar ao painel</a></div>`;
-    if (!p.parent) { if (procRoot() && p.id === procRoot().id) return viewProcessos(); UI.briefs.kind = p.section || ''; return viewBriefs(); }
-    const parent = page(p.parent); const proc = !isBrief(p); const n = nicheOf(p); const ed = canEdit();
+    if (!p.parent) { if (procRoot() && p.id === procRoot().id) return viewProcessos(); if (edRoot() && p.id === edRoot().id) return viewEdicao(); UI.briefs.kind = p.section || ''; return viewBriefs(); }
+    const parent = page(p.parent); const edi = isEdit(p); const proc = !isBrief(p) && !edi; const n = nicheOf(p); const ed = canEdit();
     const hist = DB.activity.filter((a) => a.page === p.id);
     const docs = docsLink(p), drive = driveLink(p);
     const docId = docs && (docs.match(/\/d\/([\w-]+)/) || [])[1];
     warm(p, true);
-    return `<a class="back" href="${proc ? '#/processos' : '#/briefs'}">${IC.back}${esc(parent ? parent.title : 'Voltar')}</a>
+    return `<a class="back" href="${proc ? '#/processos' : edi ? '#/edicao' : '#/briefs'}">${IC.back}${esc(parent ? parent.title : 'Voltar')}</a>
       <section class="pg" style="--c:${proc ? '#a99be6' : n.c}">
-        <div class="pg-cover"><span class="c-glow"></span>${proc ? `<span class="pg-emb">${IC.proc}</span>` : art(n, 'pg-art') || emblem(n, 64)}<div><p class="eyebrow">${proc ? 'Processo' : esc(p.kind.toUpperCase()) + ' · ' + esc(n.name)}</p>
+        <div class="pg-cover"><span class="c-glow"></span>${proc ? `<span class="pg-emb">${IC.proc}</span>` : art(n, 'pg-art') || emblem(n, 64)}<div><p class="eyebrow">${proc ? 'Processo' : edi ? 'Briefing de edição · ' + esc(n.name) : esc(p.kind.toUpperCase()) + ' · ' + esc(n.name)}</p>
           ${ed ? `<input class="pg-title" data-edit="title" value="${esc(p.title)}" maxlength="240" aria-label="Título">` : `<h1 class="pg-title">${esc(p.title)}</h1>`}</div></div>
         <div class="pg-actions">
           ${docs ? `<a class="btn primary big" href="${esc(safeUrl(docs))}" target="_blank" rel="noopener">${IC.docs}Abrir Google Docs${IC.ext}</a>` : '<span class="miss big">Sem Google Docs</span>'}
@@ -336,6 +344,17 @@
         ${ed ? `<div class="pg-danger"><button class="btn ghost sm danger" data-a="del" data-id="${p.id}">${IC.trash}Excluir</button></div>` : ''}
       </section>
       <section class="block"><header class="bh"><h2>Histórico</h2></header><ol class="feed">${hist.map(feedItem).join('') || '<li class="empty-s">Sem registros para esta página.</li>'}</ol></section>`;
+  }
+
+  // ---------- briefings de edição ----------
+  function viewEdicao() {
+    const r = route(); const nk = r.q.n || '';
+    let list = edicoes(); if (nk) list = list.filter((p) => nicheOf(p).key === nk);
+    list = list.slice().sort((a, b) => (nicheIdx(a) - nicheIdx(b)) || (lote(b) - lote(a)) || b.created.localeCompare(a.created));
+    const usados = NICHES.filter((n) => edicoes().some((p) => nicheOf(p) === n));
+    return `<div class="ph"><div><p class="eyebrow">Edição congruente com a copy</p><h1 class="title">Briefing de edição</h1><p class="muted">${plural(list.length, 'Doc', 'Docs')} de briefing de edição${nk ? ' neste nicho' : ''}. Cada Doc tem até 15 ads, com os inserts separados por função no Drive.</p></div>${canEdit() ? `<button class="btn primary" data-a="newBrief" data-k="edicao">${IC.plus}Novo briefing de edição</button>` : ''}</div>
+      ${usados.length > 1 ? `<div class="seg"><a class="${nk ? '' : 'on'}" href="#/edicao">Todos</a>${usados.map((n) => `<a class="${nk === n.key ? 'on' : ''}" href="#/edicao?n=${n.key}">${esc(n.short)}</a>`).join('')}</div>` : ''}
+      ${list.length ? grouped(list, card, 'Doc', 'Docs') : `<div class="empty"><b>Nenhum briefing de edição ainda.</b><p class="muted small">${edRoot() ? 'O primeiro Doc entra aqui assim que for criado.' : 'A guia "02 - Briefs de Edição" ainda não existe no Bunker.'}</p></div>`}`;
   }
 
   // ---------- processos ----------
@@ -392,7 +411,7 @@
   const mErr = (m) => { const e = modalRoot.querySelector('.err'); if (e) e.textContent = m; };
   function newBriefModal(kind) {
     kind = kind || 'ads';
-    openModal('Novo ' + (kind === 'processos' ? 'processo' : 'brief'), `<div class="kinds">${[['ads', 'Ads'], ['vsl', 'VSL'], ['processos', 'Processos']].map(([k, l]) => `<label><input type="radio" name="kind" value="${k}"${k === kind ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>
+    openModal('Novo ' + (kind === 'processos' ? 'processo' : kind === 'edicao' ? 'briefing de edição' : 'brief'), `<div class="kinds">${[['ads', 'Ads'], ['vsl', 'VSL'], ['edicao', 'Edição'], ['processos', 'Processos']].map(([k, l]) => `<label><input type="radio" name="kind" value="${k}"${k === kind ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>
       <label class="f"><span>Título</span><input name="title" maxlength="240" placeholder="BRIEF ADS ED LOTE 14" required></label>
       <label class="f nb-niche"><span>Nicho</span><select name="offer"><option value="">Sem nicho</option>${NICHES.map((n) => `<option>${esc(n.name)}</option>`).join('')}</select></label>
       <label class="f"><span>Google Docs (opcional)</span><input name="docs" placeholder="https://docs.google.com/…"></label>
@@ -402,10 +421,10 @@
       const docs = String(fd.get('docs') || '').trim(), drive = String(fd.get('drive') || '').trim();
       if (docs && !isHost(docs, 'docs.google.com')) return mErr('O link do Docs tem que ser do docs.google.com.');
       if (drive && !isHost(drive, 'drive.google.com')) return mErr('O link do Drive tem que ser do drive.google.com.');
-      const root = k === 'processos' ? procRoot() : rootFor(k);
-      if (!root) return mErr('A guia principal de ' + (k === 'processos' ? 'Processos' : k.toUpperCase()) + ' não existe no Bunker.');
+      const pg = k === 'processos' || k === 'edicao'; const root = k === 'processos' ? procRoot() : k === 'edicao' ? edRoot() : rootFor(k);
+      if (!root) return mErr('A guia principal de ' + (k === 'processos' ? 'Processos' : k === 'edicao' ? 'Edição' : k.toUpperCase()) + ' não existe no Bunker.');
       const now = new Date();
-      const input = { title, kind: k === 'processos' ? 'page' : k, section: k === 'processos' ? null : k, parent_id: root.id, offer: k === 'processos' ? null : (fd.get('offer') || null), docs_url: docs || null, drive_url: drive || null, due_date: todayYMD(), due_time: now.toTimeString().slice(0, 5), sort_order: now.getTime() };
+      const input = { title, kind: pg ? 'page' : k, section: pg ? null : k, parent_id: root.id, offer: k === 'processos' ? null : (fd.get('offer') || null), docs_url: docs || null, drive_url: drive || null, due_date: todayYMD(), due_time: now.toTimeString().slice(0, 5), sort_order: now.getTime() };
       modalRoot.querySelector('footer .btn:last-child').disabled = true;
       try {
         let id;
@@ -428,8 +447,8 @@
 
   // ---------- busca rápida ----------
   function palette() {
-    const items = [['#/', 'Painel', 'Página'], ['#/briefs', 'Briefs', 'Página'], ['#/processos', 'Processos', 'Página'], ['#/calendario', 'Calendário', 'Página'], ['#/controle', 'Controle', 'Página'], ['#/equipe', 'Equipe', 'Página']]
-      .concat(NICHES.map((n) => ['#/briefs?n=' + n.key, n.name, 'Nicho'])).concat(DB.pages.filter((p) => p.parent).map((p) => ['#/p/' + p.id, p.title, isBrief(p) ? nicheOf(p).name : 'Processo']));
+    const items = [['#/', 'Painel', 'Página'], ['#/briefs', 'Briefs', 'Página'], ['#/edicao', 'Briefing de edição', 'Página'], ['#/processos', 'Processos', 'Página'], ['#/calendario', 'Calendário', 'Página'], ['#/controle', 'Controle', 'Página'], ['#/equipe', 'Equipe', 'Página']]
+      .concat(NICHES.map((n) => ['#/briefs?n=' + n.key, n.name, 'Nicho'])).concat(DB.pages.filter((p) => p.parent).map((p) => ['#/p/' + p.id, p.title, isBrief(p) ? nicheOf(p).name : isEdit(p) ? 'Edição · ' + nicheOf(p).name : 'Processo']));
     modalRoot.innerHTML = `<div class="mback" data-a="closeModal"></div><div class="pal"><label class="search big">${IC.search}<input id="pal" placeholder="Ir para um brief, nicho ou página…" autocomplete="off"></label><div class="pal-l" id="pal-l"></div></div>`;
     modalRoot.classList.add('on');
     const q = document.getElementById('pal'), L = document.getElementById('pal-l'); let idx = 0, shown = [];
@@ -453,7 +472,8 @@
     if (r.name === 'painel') body = viewPainel();
     else if (r.name === 'briefs') { body = viewBriefs(); title = 'Briefs'; }
     else if (r.name === 'processos') { body = viewProcessos(); title = 'Processos'; }
-    else if (r.name === 'p') { body = viewPage(r.id); const p = page(r.id); title = p ? p.title : 'Página'; active = p && !isBrief(p) ? 'processos' : 'briefs'; }
+    else if (r.name === 'edicao') { body = viewEdicao(); title = 'Briefing de edição'; }
+    else if (r.name === 'p') { body = viewPage(r.id); const p = page(r.id); title = p ? p.title : 'Página'; active = p && isEdit(p) ? 'edicao' : p && !isBrief(p) ? 'processos' : 'briefs'; }
     else if (r.name === 'calendario') { body = viewCalendario(); title = 'Calendário'; }
     else if (r.name === 'controle') { body = viewControle(); title = 'Controle'; }
     else if (r.name === 'equipe') { body = viewEquipe(); title = 'Equipe'; }
