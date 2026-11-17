@@ -39,18 +39,43 @@
     { key: 'neuropatia', name: 'Neuropatia', short: 'Neuropatia', re: /\bneuro|\bpes\b/, c: '#e8c96a', icon: '<path d="M13 3 6 13h5l-1 8 7-10h-5l1-8Z"/>' },
     { key: 'pulmao', name: 'Pulmão', short: 'Pulmão', re: /pulm|respir/, c: '#7ad0d4', icon: '<path d="M12 4v8M12 12c-1 0-2 1-3 2"/><path d="M12 12c1 0 2 1 3 2"/><path d="M9 7C5 8 3 13 3 17c0 2 1.5 3 3 3 2 0 3-1.5 3-3V7Z"/><path d="M15 7c4 1 6 6 6 10 0 2-1.5 3-3 3-2 0-3-1.5-3-3V7Z"/>' },
     { key: 'visao', name: 'Visão', short: 'Visão', re: /visao|\bolho|ocular|catarat/, c: '#d99ac8', icon: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>' },
+    // nichos e bibliotecas novos (17/11/2026): lib = não aparece no painel de briefs enquanto não tiver brief
+    { key: 'prostata', name: 'Próstata', short: 'Próstata', re: /prostat/, c: '#7d92ee', lib: true, icon: '<path d="M12 5c4 0 7 2.5 7 6s-3 7-7 7-7-3.5-7-7 3-6 7-6Z"/><path d="M12 2v3M12 18v3"/>' },
+    { key: 'dores', name: 'Dores Articulares', short: 'Dores Articulares', re: /dores? articular|artrose|artrite/, c: '#f08a5d', lib: true, icon: '<rect x="9" y="3" width="6" height="7" rx="3"/><rect x="9" y="14" width="6" height="7" rx="3"/><circle cx="12" cy="12" r="2"/>' },
+    { key: 'gravidez', name: 'Gravidez', short: 'Gravidez', re: /gravid|gestan/, c: '#f4a9c4', lib: true, icon: '<circle cx="12" cy="12" r="8"/><path d="M9 11h.01M15 11h.01M9.5 15a3.5 3.5 0 0 0 5 0"/>' },
+    { key: 'intestino', name: 'Intestino', short: 'Intestino', re: /intestin/, c: '#e8946a', lib: true, icon: '<path d="M4 6h11a4 4 0 0 1 0 8H8a3 3 0 0 0 0 6h12"/>' },
+    { key: 'prosperidade', name: 'Prosperidade / Religioso', short: 'Prosperidade', re: /prosper|religios/, c: '#e2b93b', lib: true, icon: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>' },
+    { key: 'reacoes', name: 'Reações UGC', short: 'Reações UGC', re: /(?!)/, c: '#ff7ab8', lib: true, icon: '<rect x="7" y="3" width="10" height="18" rx="2.5"/><circle cx="12" cy="10" r="2.5"/><path d="M10 16h4"/>' },
+    { key: 'rejuvenescimento', name: 'Rejuvenescimento', short: 'Rejuvenescimento', re: /rejuven/, c: '#7fd8b2', lib: true, icon: '<path d="M7 3h10M7 21h10M8 3c0 5 4 6 4 9s-4 4-4 9M16 3c0 5-4 6-4 9s4 4 4 9"/>' },
+    { key: 'relacionamento', name: 'Relacionamento', short: 'Relacionamento', re: /relacionam/, c: '#ff6f91', lib: true, icon: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/>' },
+    { key: 'renda', name: 'Renda Extra', short: 'Renda Extra', re: /renda extra/, c: '#5fd37a', lib: true, icon: '<path d="M4 18l6-6 4 4 6-8M15 8h5v5"/>' },
+    { key: 'zumbido', name: 'Zumbido no Ouvido', short: 'Zumbido', re: /zumbid|tinnit/, c: '#8aa4ff', lib: true, icon: '<path d="M8 20c-2-1-3-3-3-6a6 6 0 0 1 12 0c0 3-3 3-3 6"/><path d="M19 9q2 3 0 6"/>' },
+    { key: 'ed18', name: 'ED +18', short: 'ED +18', re: /(?!)/, c: '#ff4d7a', lib: true, icon: '<circle cx="12" cy="12" r="8"/><path d="M8 14l2-4v4M13 10h3v2h-3v2h3"/>' },
+    { key: 'mecanismos', name: 'Mecanismos Gerais', short: 'Mecanismos', re: /(?!)/, c: '#8d9bb0', lib: true, icon: '<circle cx="9" cy="12" r="4"/><circle cx="17" cy="8" r="2.5"/><path d="M9 6V4M9 20v-2M3 12h2M13 12h2"/>' },
+    { key: 'pack', name: 'Pack de Receitas', short: 'Receitas', re: /(?!)/, c: '#f2b25e', lib: true, icon: '<path d="M4 11h16a8 8 0 0 1-16 0Z"/><path d="M8 7c0-2 2-2 2-4M13 7c0-2 2-2 2-4"/>' },
+    { key: 'edicao', name: 'Edição', short: 'Edição', re: /(?!)/, c: '#4fb0f0', lib: true, icon: '<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 8l3-4h4l-3 4M10 8l3-4h4l-3 4M10 12l5 3-5 3Z"/>' },
+    { key: 'vsl', name: 'VSL', short: 'VSL', re: /(?!)/, c: '#e85b5b', lib: true, icon: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M10 9l5 2-5 2Z"/><path d="M3 20h18"/>' },
   ];
   const OTHER = { key: 'outro', name: 'Sem nicho', short: 'Outro', c: '#a4a8b0', icon: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h4"/>' };
+  // Nicho que ainda não está na lista acima nasce sozinho: nome da oferta, cor própria e imagem automática (art.js).
+  const DYN = {};
+  const hueOf = (s) => { let h = 0; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
+  function dynNiche(p) {
+    const name = String(p.offer || '').trim();
+    if (!name || name.length > 40 || /[.:;!?]/.test(name) || !(isIns(p) || isEdit(p) || isVal(p) || isEi(p) || isBrief(p))) return null;
+    const k = 'x-' + fold(name).replace(/[^a-z0-9]+/g, '-');
+    return DYN[k] || (DYN[k] = { key: k, name, short: name, re: /(?!)/, c: `hsl(${hueOf(fold(name))} 62% 70%)`, icon: OTHER.icon, dyn: true, lib: true });
+  }
   function nicheOf(p) {
     const o = fold(p.offer).trim();
     const exact = NICHES.find((n) => fold(n.name) === o || fold(n.short) === o);
     if (exact) return exact;
     const hay = fold(p.offer + ' ' + p.title);
-    return NICHES.find((n) => n.re.test(hay)) || OTHER;
+    return NICHES.find((n) => n.re.test(hay)) || dynNiche(p) || OTHER;
   }
   const nicheIdx = (p) => { const i = NICHES.indexOf(nicheOf(p)); return i < 0 ? 99 : i; };
   const lote = (p) => +((String(p.title).match(/lote\s*(\d+)/i) || [])[1] || 0);
-  const art = (n, cls) => (window.BunkerArt && window.BunkerArt(n.key, cls)) || '';
+  const art = (n, cls) => (window.BunkerArt && window.BunkerArt(n.key, cls, n)) || '';
   const emblem = (n, size) => `<svg class="emb" viewBox="0 0 24 24" width="${size || 28}" height="${size || 28}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${n.icon}</svg>`;
 
   // ---------- estrutura ----------
@@ -204,7 +229,7 @@
   // ---------- radar ----------
   function radar(decor) {
     const bs = briefs(); const R = 130, C = 150;
-    const by = NICHES.map((n) => { const list = bs.filter((p) => nicheOf(p) === n); const last = list.reduce((m, p) => (p.created > m ? p.created : m), ''); return { n, count: list.length, last }; }).filter((x) => x.count || decor);
+    const by = NICHES.filter((n) => !n.lib || bs.some((p) => nicheOf(p) === n)).map((n) => { const list = bs.filter((p) => nicheOf(p) === n); const last = list.reduce((m, p) => (p.created > m ? p.created : m), ''); return { n, count: list.length, last }; }).filter((x) => x.count || decor);
     const max = Math.max(1, ...by.map((x) => x.count));
     // o lote mais recente fica no anel de dentro; os outros se espalham para fora, sem amontoar
     const rank = by.slice().sort((a, b) => b.last.localeCompare(a.last)).map((x) => x.n);
@@ -232,7 +257,7 @@
     const active = new Set(bs.map((p) => nicheOf(p).key).filter((k) => k !== 'outro')).size;
     const recent = bs.slice().sort((a, b) => b.created.localeCompare(a.created)).slice(0, 7);
     const feed = DB.activity.slice(0, 9);
-    const tiles = NICHES.map((n) => { const list = bs.filter((p) => nicheOf(p) === n).sort((a, b) => b.created.localeCompare(a.created)); return { n, list }; });
+    const tiles = NICHES.map((n) => { const list = bs.filter((p) => nicheOf(p) === n).sort((a, b) => b.created.localeCompare(a.created)); return { n, list }; }).filter((t) => !t.n.lib || t.list.length);
     const otherList = bs.filter((p) => nicheOf(p) === OTHER);
     const hello = new Date().getHours() < 12 ? 'Bom dia' : new Date().getHours() < 18 ? 'Boa tarde' : 'Boa noite';
     return `<section class="hero">
@@ -397,7 +422,7 @@
     const r = route(); const nk = r.q.n || '';
     let list = insertsN(); if (nk) list = list.filter((p) => nicheOf(p).key === nk);
     list = list.slice().sort((a, b) => (nicheIdx(a) - nicheIdx(b)) || a.title.localeCompare(b.title, pt, { numeric: true }));
-    const usados = NICHES.filter((n) => insertsN().some((p) => nicheOf(p) === n));
+    const usados = [...new Set(insertsN().map(nicheOf))].filter((n) => n !== OTHER).sort((a, b) => ((NICHES.indexOf(a) < 0 ? 99 : NICHES.indexOf(a)) - (NICHES.indexOf(b) < 0 ? 99 : NICHES.indexOf(b))) || a.name.localeCompare(b.name, pt));
     return `<div class="ph"><div><p class="eyebrow">Inserts visuais por nicho</p><h1 class="title">Bunker de Inserts</h1><p class="muted">${plural(list.length, 'pasta', 'pastas')} de inserts${nk ? ' neste nicho' : ''}: recortados dos ads validados, sem legenda, separados por função (dopamina, sonho, mecanismo, benefício, prova, vilão, dor), e os bancos comprados.</p></div>${canEdit() ? `<button class="btn primary" data-a="newBrief" data-k="inserts">${IC.plus}Nova pasta de inserts</button>` : ''}</div>
       ${usados.length > 1 ? `<div class="seg"><a class="${nk ? '' : 'on'}" href="#/inserts">Todos</a>${usados.map((n) => `<a class="${nk === n.key ? 'on' : ''}" href="#/inserts?n=${n.key}">${esc(n.short)}</a>`).join('')}</div>` : ''}
       ${list.length ? grouped(list, card, 'pasta', 'pastas') : `<div class="empty"><b>Nenhuma pasta de inserts ainda.</b><p class="muted small">${insRoot() ? 'A primeira pasta entra aqui assim que for criada.' : 'A guia "05 - Bunker de Inserts" ainda não existe no Bunker.'}</p></div>`}`;
