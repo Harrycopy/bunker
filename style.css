@@ -46,7 +46,14 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .brand { display: flex; flex-direction: column; line-height: 1; flex: none; }
 .brand b { font: 400 26px/1 var(--fs); letter-spacing: .02em; }
 .brand small { font: 500 9.5px var(--fm); letter-spacing: .2em; text-transform: uppercase; color: var(--mute); margin-top: 3px; }
-.nav { display: flex; gap: 2px; flex: 1; overflow-x: auto; scrollbar-width: none; }
+.navw { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
+.nav { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth; }
+.nav-arr { display: none; flex: none; width: 28px; height: 28px; border-radius: 8px; border: 1px solid rgba(var(--ov), .12); background: var(--bg, #111); color: var(--fg); font-size: 18px; line-height: 1; cursor: pointer; z-index: 2; }
+.nav-arr:hover { background: rgba(var(--ov), .08); }
+.navw.can-l .nav-arr.l, .navw.can-r .nav-arr.r { display: inline-flex; align-items: center; justify-content: center; }
+.navw.can-l .nav { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 28px); mask-image: linear-gradient(90deg, transparent 0, #000 28px); }
+.navw.can-r .nav { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent 100%); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent 100%); }
+.navw.can-l.can-r .nav { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%); }
 .nav::-webkit-scrollbar { display: none; }
 .nav a { display: flex; align-items: center; gap: 7px; padding: 8px 12px; border-radius: 8px; color: var(--mute); font-weight: 500; white-space: nowrap; transition: color .2s, background .2s; position: relative; }
 .nav a:hover { color: var(--fg); background: rgba(var(--ov), .04); }
@@ -325,7 +332,8 @@ input.pg-title:hover { border-color: var(--line2); } input.pg-title:focus { bord
 }
 @media (max-width: 680px) {
   .top-in { padding: 10px 14px; gap: 10px; flex-wrap: wrap; }
-  .nav { order: 3; flex-basis: 100%; margin: 0 -14px -10px; padding: 0 10px 8px; }
+  .navw { order: 3; flex-basis: 100%; margin: 0 -14px -10px; padding: 0 10px 8px; }
+  .nav-arr { display: none !important; }
   .nav a.on::after { bottom: 0; } .nav a span { font-size: 13px; }
   .tools .btn span, .kbd { display: none; }
   .ws { padding: 20px 14px 60px; } .foot { padding: 16px 14px; }

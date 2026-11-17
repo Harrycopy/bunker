@@ -65,14 +65,23 @@
   const briefs = () => DB.pages.filter(isBrief);
   const processes = () => { const r = procRoot(); return r ? DB.pages.filter((p) => p.parent === r.id) : []; };
   // briefings de edição: filhos da raiz "02 - Briefs de Edição" (kind page, nicho no offer)
-  const edRoot = () => roots().find((p) => fold(p.title).includes('edicao'));
+  const rootBy = (needle, not) => roots().find((p) => { const t = fold(p.title); return t.includes(needle) && !(not && t.includes(not)); });
+  const edRoot = () => rootBy('edicao', 'interno');
   const isEdit = (p) => { const r = edRoot(); return !!(r && p && p.parent === r.id); };
   const edicoes = () => { const r = edRoot(); return r ? DB.pages.filter((p) => p.parent === r.id) : []; };
   // validados internos: filhos da raiz "03 - Validados Internos" (kind page, nicho no offer)
   const valRoot = () => roots().find((p) => fold(p.title).includes('validados internos'));
   const isVal = (p) => { const r = valRoot(); return !!(r && p && p.parent === r.id); };
   const validados = () => { const r = valRoot(); return r ? DB.pages.filter((p) => p.parent === r.id) : []; };
-  const kindLabel = (p) => (isEdit(p) ? 'EDIÇÃO' : isVal(p) ? 'VALIDADO' : String(p.kind).toUpperCase());
+  // edição dos validados internos: filhos da raiz "04 - Edição Internos" (kind page, nicho no offer)
+  const eiRoot = () => rootBy('edicao interno');
+  const isEi = (p) => { const r = eiRoot(); return !!(r && p && p.parent === r.id); };
+  const edInternos = () => { const r = eiRoot(); return r ? DB.pages.filter((p) => p.parent === r.id) : []; };
+  // bunker de inserts: filhos da raiz "05 - Bunker de Inserts" (um por nicho, Drive com as pastas por função)
+  const insRoot = () => rootBy('bunker de inserts');
+  const isIns = (p) => { const r = insRoot(); return !!(r && p && p.parent === r.id); };
+  const insertsN = () => { const r = insRoot(); return r ? DB.pages.filter((p) => p.parent === r.id) : []; };
+  const kindLabel = (p) => (isEdit(p) ? 'EDIÇÃO' : isVal(p) ? 'VALIDADO' : isEi(p) ? 'EDIÇÃO INTERNA' : isIns(p) ? 'INSERTS' : String(p.kind).toUpperCase());
   const subido = (p) => (p.dueDate ? fmtDay(p.dueDate) + (p.dueTime ? ' · ' + p.dueTime : '') : fmtDT(p.created));
   const docsLink = (p) => (isHost(p.docs, 'docs.google.com') ? p.docs : isHost(p.drive, 'docs.google.com') ? p.drive : '');
   const driveLink = (p) => (p.drive && !isHost(p.drive, 'docs.google.com') ? p.drive : '');
@@ -138,12 +147,12 @@
   // ---------- casca ----------
   function shell(body, active) {
     const u = me();
-    const nav = [['painel', '#/', IC.home, 'Painel'], ['briefs', '#/briefs', IC.brief, 'Briefs'], ['edicao', '#/edicao', IC.film, 'Edição'], ['validados', '#/validados', IC.brief, 'Validados Internos'], ['processos', '#/processos', IC.proc, 'Processos'], ['calendario', '#/calendario', IC.cal, 'Calendário'], ['controle', '#/controle', IC.pulse, 'Controle'], ['equipe', '#/equipe', IC.team, 'Equipe']];
+    const nav = [['painel', '#/', IC.home, 'Painel'], ['briefs', '#/briefs', IC.brief, 'Briefs Notion'], ['validados', '#/validados', IC.brief, 'Validados Internos'], ['edicao', '#/edicao', IC.film, 'Edição Notion'], ['edint', '#/edint', IC.film, 'Edição Internos'], ['inserts', '#/inserts', IC.drive, 'Bunker de Inserts'], ['processos', '#/processos', IC.proc, 'Processos'], ['calendario', '#/calendario', IC.cal, 'Calendário'], ['controle', '#/controle', IC.pulse, 'Controle'], ['equipe', '#/equipe', IC.team, 'Equipe']];
     return `${LIVE ? '' : `<div class="demo">${IC.lock}<span>Demo com dados de exemplo · nada aqui mexe no Bunker real</span><a href="./">Entrar no Bunker real</a></div>`}
     <div class="stripe" aria-hidden="true"></div>
     <header class="top"><div class="top-in">
       <a class="brand" href="#/"><b>BUNKER</b><small>ShippingCaps</small></a>
-      <nav class="nav">${nav.map(([k, h, ic, l]) => `<a href="${h}" class="${active === k ? 'on' : ''}">${ic}<span>${l}</span></a>`).join('')}</nav>
+      <div class="navw"><button class="nav-arr l" data-a="navL" aria-label="Rolar o menu para a esquerda" title="Mais à esquerda">‹</button><nav class="nav" id="nav">${nav.map(([k, h, ic, l]) => `<a href="${h}" class="${active === k ? 'on' : ''}">${ic}<span>${l}</span></a>`).join('')}</nav><button class="nav-arr r" data-a="navR" aria-label="Rolar o menu para a direita" title="Mais à direita">›</button></div>
       <div class="tools">
         <button class="tool" data-a="palette" title="Busca rápida (⌘K)">${IC.search}<span class="kbd">⌘K</span></button>
         ${canEdit() ? `<button class="btn primary sm" data-a="newBrief">${IC.plus}<span>Novo brief</span></button>` : `<span class="ro" title="Só o Edson edita o Bunker">${IC.eye}<span>Leitura</span></span>`}
@@ -321,15 +330,15 @@
   function viewPage(id) {
     const p = page(id);
     if (!p) return `<div class="empty big"><b>Página não encontrada.</b><a class="btn ghost" href="#/">Voltar ao painel</a></div>`;
-    if (!p.parent) { if (procRoot() && p.id === procRoot().id) return viewProcessos(); if (edRoot() && p.id === edRoot().id) return viewEdicao(); if (valRoot() && p.id === valRoot().id) return viewValidados(); UI.briefs.kind = p.section || ''; return viewBriefs(); }
-    const parent = page(p.parent); const edi = isEdit(p); const val = isVal(p); const proc = !isBrief(p) && !edi && !val; const n = nicheOf(p); const ed = canEdit();
+    if (!p.parent) { if (procRoot() && p.id === procRoot().id) return viewProcessos(); if (edRoot() && p.id === edRoot().id) return viewEdicao(); if (valRoot() && p.id === valRoot().id) return viewValidados(); if (eiRoot() && p.id === eiRoot().id) return viewEdInt(); if (insRoot() && p.id === insRoot().id) return viewInserts(); UI.briefs.kind = p.section || ''; return viewBriefs(); }
+    const parent = page(p.parent); const edi = isEdit(p); const val = isVal(p); const ei = isEi(p); const ins = isIns(p); const proc = !isBrief(p) && !edi && !val && !ei && !ins; const n = nicheOf(p); const ed = canEdit();
     const hist = DB.activity.filter((a) => a.page === p.id);
     const docs = docsLink(p), drive = driveLink(p);
     const docId = docs && (docs.match(/\/d\/([\w-]+)/) || [])[1];
     warm(p, true);
-    return `<a class="back" href="${proc ? '#/processos' : edi ? '#/edicao' : val ? '#/validados' : '#/briefs'}">${IC.back}${esc(parent ? parent.title : 'Voltar')}</a>
+    return `<a class="back" href="${proc ? '#/processos' : edi ? '#/edicao' : val ? '#/validados' : ei ? '#/edint' : ins ? '#/inserts' : '#/briefs'}">${IC.back}${esc(parent ? parent.title : 'Voltar')}</a>
       <section class="pg" style="--c:${proc ? '#a99be6' : n.c}">
-        <div class="pg-cover"><span class="c-glow"></span>${proc ? `<span class="pg-emb">${IC.proc}</span>` : art(n, 'pg-art') || emblem(n, 64)}<div><p class="eyebrow">${proc ? 'Processo' : edi ? 'Briefing de edição · ' + esc(n.name) : val ? 'Validados Internos · ' + esc(n.name) : esc(p.kind.toUpperCase()) + ' · ' + esc(n.name)}</p>
+        <div class="pg-cover"><span class="c-glow"></span>${proc ? `<span class="pg-emb">${IC.proc}</span>` : art(n, 'pg-art') || emblem(n, 64)}<div><p class="eyebrow">${proc ? 'Processo' : edi ? 'Briefing de edição · ' + esc(n.name) : val ? 'Validados Internos · ' + esc(n.name) : ei ? 'Edição Internos · ' + esc(n.name) : ins ? 'Bunker de Inserts · ' + esc(n.name) : esc(p.kind.toUpperCase()) + ' · ' + esc(n.name)}</p>
           ${ed ? `<input class="pg-title" data-edit="title" value="${esc(p.title)}" maxlength="240" aria-label="Título">` : `<h1 class="pg-title">${esc(p.title)}</h1>`}</div></div>
         <div class="pg-actions">
           ${docs ? `<a class="btn primary big" href="${esc(safeUrl(docs))}" target="_blank" rel="noopener">${IC.docs}Abrir Google Docs${IC.ext}</a>` : '<span class="miss big">Sem Google Docs</span>'}
@@ -370,6 +379,28 @@
     return `<div class="ph"><div><p class="eyebrow">Ads que venderam com a nossa copy</p><h1 class="title">Validados Internos</h1><p class="muted">${plural(list.length, 'Doc', 'Docs')} de brief de copy e de edição dos ads validados${nk ? ' neste nicho' : ''}.</p></div>${canEdit() ? `<button class="btn primary" data-a="newBrief" data-k="validados">${IC.plus}Novo Doc validado</button>` : ''}</div>
       ${usados.length > 1 ? `<div class="seg"><a class="${nk ? '' : 'on'}" href="#/validados">Todos</a>${usados.map((n) => `<a class="${nk === n.key ? 'on' : ''}" href="#/validados?n=${n.key}">${esc(n.short)}</a>`).join('')}</div>` : ''}
       ${list.length ? grouped(list, card, 'Doc', 'Docs') : `<div class="empty"><b>Nenhum validado interno ainda.</b><p class="muted small">${valRoot() ? 'O primeiro Doc entra aqui assim que for criado.' : 'A guia "03 - Validados Internos" ainda não existe no Bunker.'}</p></div>`}`;
+  }
+
+  // ---------- edição dos validados internos ----------
+  function viewEdInt() {
+    const r = route(); const nk = r.q.n || '';
+    let list = edInternos(); if (nk) list = list.filter((p) => nicheOf(p).key === nk);
+    list = list.slice().sort((a, b) => (nicheIdx(a) - nicheIdx(b)) || a.title.localeCompare(b.title, pt, { numeric: true }));
+    const usados = NICHES.filter((n) => edInternos().some((p) => nicheOf(p) === n));
+    return `<div class="ph"><div><p class="eyebrow">Edição dos ads que venderam com a nossa copy</p><h1 class="title">Edição Internos</h1><p class="muted">${plural(list.length, 'Doc', 'Docs')} de briefing de edição dos validados internos${nk ? ' neste nicho' : ''}, com prints, escuta e os inserts no Bunker de Inserts.</p></div>${canEdit() ? `<button class="btn primary" data-a="newBrief" data-k="edint">${IC.plus}Novo Doc de edição interna</button>` : ''}</div>
+      ${usados.length > 1 ? `<div class="seg"><a class="${nk ? '' : 'on'}" href="#/edint">Todos</a>${usados.map((n) => `<a class="${nk === n.key ? 'on' : ''}" href="#/edint?n=${n.key}">${esc(n.short)}</a>`).join('')}</div>` : ''}
+      ${list.length ? grouped(list, card, 'Doc', 'Docs') : `<div class="empty"><b>Nenhuma edição interna ainda.</b><p class="muted small">${eiRoot() ? 'O primeiro Doc entra aqui assim que for criado.' : 'A guia "04 - Edição Internos" ainda não existe no Bunker.'}</p></div>`}`;
+  }
+
+  // ---------- bunker de inserts ----------
+  function viewInserts() {
+    const r = route(); const nk = r.q.n || '';
+    let list = insertsN(); if (nk) list = list.filter((p) => nicheOf(p).key === nk);
+    list = list.slice().sort((a, b) => (nicheIdx(a) - nicheIdx(b)) || a.title.localeCompare(b.title, pt, { numeric: true }));
+    const usados = NICHES.filter((n) => insertsN().some((p) => nicheOf(p) === n));
+    return `<div class="ph"><div><p class="eyebrow">Inserts visuais por nicho</p><h1 class="title">Bunker de Inserts</h1><p class="muted">${plural(list.length, 'pasta', 'pastas')} de inserts${nk ? ' neste nicho' : ''}: recortados dos ads validados, sem legenda, separados por função (dopamina, sonho, mecanismo, benefício, prova, vilão, dor), e os bancos comprados.</p></div>${canEdit() ? `<button class="btn primary" data-a="newBrief" data-k="inserts">${IC.plus}Nova pasta de inserts</button>` : ''}</div>
+      ${usados.length > 1 ? `<div class="seg"><a class="${nk ? '' : 'on'}" href="#/inserts">Todos</a>${usados.map((n) => `<a class="${nk === n.key ? 'on' : ''}" href="#/inserts?n=${n.key}">${esc(n.short)}</a>`).join('')}</div>` : ''}
+      ${list.length ? grouped(list, card, 'pasta', 'pastas') : `<div class="empty"><b>Nenhuma pasta de inserts ainda.</b><p class="muted small">${insRoot() ? 'A primeira pasta entra aqui assim que for criada.' : 'A guia "05 - Bunker de Inserts" ainda não existe no Bunker.'}</p></div>`}`;
   }
 
   // ---------- processos ----------
@@ -426,7 +457,7 @@
   const mErr = (m) => { const e = modalRoot.querySelector('.err'); if (e) e.textContent = m; };
   function newBriefModal(kind) {
     kind = kind || 'ads';
-    openModal('Novo ' + (kind === 'processos' ? 'processo' : kind === 'edicao' ? 'briefing de edição' : kind === 'validados' ? 'Doc validado' : 'brief'), `<div class="kinds">${[['ads', 'Ads'], ['vsl', 'VSL'], ['edicao', 'Edição'], ['validados', 'Validados'], ['processos', 'Processos']].map(([k, l]) => `<label><input type="radio" name="kind" value="${k}"${k === kind ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>
+    openModal('Novo ' + (kind === 'processos' ? 'processo' : kind === 'edicao' ? 'briefing de edição' : kind === 'validados' ? 'Doc validado' : kind === 'edint' ? 'Doc de edição interna' : kind === 'inserts' ? 'pasta de inserts' : 'brief'), `<div class="kinds">${[['ads', 'Ads'], ['vsl', 'VSL'], ['edicao', 'Edição'], ['validados', 'Validados'], ['edint', 'Edição interna'], ['inserts', 'Inserts'], ['processos', 'Processos']].map(([k, l]) => `<label><input type="radio" name="kind" value="${k}"${k === kind ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div>
       <label class="f"><span>Título</span><input name="title" maxlength="240" placeholder="BRIEF ADS ED LOTE 14" required></label>
       <label class="f nb-niche"><span>Nicho</span><select name="offer"><option value="">Sem nicho</option>${NICHES.map((n) => `<option>${esc(n.name)}</option>`).join('')}</select></label>
       <label class="f"><span>Google Docs (opcional)</span><input name="docs" placeholder="https://docs.google.com/…"></label>
@@ -436,8 +467,8 @@
       const docs = String(fd.get('docs') || '').trim(), drive = String(fd.get('drive') || '').trim();
       if (docs && !isHost(docs, 'docs.google.com')) return mErr('O link do Docs tem que ser do docs.google.com.');
       if (drive && !isHost(drive, 'drive.google.com')) return mErr('O link do Drive tem que ser do drive.google.com.');
-      const pg = k === 'processos' || k === 'edicao' || k === 'validados'; const root = k === 'processos' ? procRoot() : k === 'edicao' ? edRoot() : k === 'validados' ? valRoot() : rootFor(k);
-      if (!root) return mErr('A guia principal de ' + (k === 'processos' ? 'Processos' : k === 'edicao' ? 'Edição' : k === 'validados' ? 'Validados Internos' : k.toUpperCase()) + ' não existe no Bunker.');
+      const pg = k === 'processos' || k === 'edicao' || k === 'validados' || k === 'edint' || k === 'inserts'; const root = k === 'processos' ? procRoot() : k === 'edicao' ? edRoot() : k === 'validados' ? valRoot() : k === 'edint' ? eiRoot() : k === 'inserts' ? insRoot() : rootFor(k);
+      if (!root) return mErr('A guia principal de ' + (k === 'processos' ? 'Processos' : k === 'edicao' ? 'Edição' : k === 'validados' ? 'Validados Internos' : k === 'edint' ? 'Edição Internos' : k === 'inserts' ? 'Bunker de Inserts' : k.toUpperCase()) + ' não existe no Bunker.');
       const now = new Date();
       const input = { title, kind: pg ? 'page' : k, section: pg ? null : k, parent_id: root.id, offer: k === 'processos' ? null : (fd.get('offer') || null), docs_url: docs || null, drive_url: drive || null, due_date: todayYMD(), due_time: now.toTimeString().slice(0, 5), sort_order: now.getTime() };
       modalRoot.querySelector('footer .btn:last-child').disabled = true;
@@ -462,7 +493,7 @@
 
   // ---------- busca rápida ----------
   function palette() {
-    const items = [['#/', 'Painel', 'Página'], ['#/briefs', 'Briefs', 'Página'], ['#/edicao', 'Briefing de edição', 'Página'], ['#/validados', 'Validados Internos', 'Página'], ['#/processos', 'Processos', 'Página'], ['#/calendario', 'Calendário', 'Página'], ['#/controle', 'Controle', 'Página'], ['#/equipe', 'Equipe', 'Página']]
+    const items = [['#/', 'Painel', 'Página'], ['#/briefs', 'Briefs', 'Página'], ['#/edicao', 'Briefing de edição', 'Página'], ['#/validados', 'Validados Internos', 'Página'], ['#/edint', 'Edição Internos', 'Página'], ['#/inserts', 'Bunker de Inserts', 'Página'], ['#/processos', 'Processos', 'Página'], ['#/calendario', 'Calendário', 'Página'], ['#/controle', 'Controle', 'Página'], ['#/equipe', 'Equipe', 'Página']]
       .concat(NICHES.map((n) => ['#/briefs?n=' + n.key, n.name, 'Nicho'])).concat(DB.pages.filter((p) => p.parent).map((p) => ['#/p/' + p.id, p.title, isBrief(p) ? nicheOf(p).name : isEdit(p) ? 'Edição · ' + nicheOf(p).name : 'Processo']));
     modalRoot.innerHTML = `<div class="mback" data-a="closeModal"></div><div class="pal"><label class="search big">${IC.search}<input id="pal" placeholder="Ir para um brief, nicho ou página…" autocomplete="off"></label><div class="pal-l" id="pal-l"></div></div>`;
     modalRoot.classList.add('on');
@@ -489,13 +520,16 @@
     else if (r.name === 'processos') { body = viewProcessos(); title = 'Processos'; }
     else if (r.name === 'edicao') { body = viewEdicao(); title = 'Briefing de edição'; }
     else if (r.name === 'validados') { body = viewValidados(); title = 'Validados Internos'; }
-    else if (r.name === 'p') { body = viewPage(r.id); const p = page(r.id); title = p ? p.title : 'Página'; active = p && isEdit(p) ? 'edicao' : p && isVal(p) ? 'validados' : p && !isBrief(p) ? 'processos' : 'briefs'; }
+    else if (r.name === 'edint') { body = viewEdInt(); title = 'Edição Internos'; }
+    else if (r.name === 'inserts') { body = viewInserts(); title = 'Bunker de Inserts'; }
+    else if (r.name === 'p') { body = viewPage(r.id); const p = page(r.id); title = p ? p.title : 'Página'; active = p && isEdit(p) ? 'edicao' : p && isVal(p) ? 'validados' : p && isEi(p) ? 'edint' : p && isIns(p) ? 'inserts' : p && !isBrief(p) ? 'processos' : 'briefs'; }
     else if (r.name === 'calendario') { body = viewCalendario(); title = 'Calendário'; }
     else if (r.name === 'controle') { body = viewControle(); title = 'Controle'; }
     else if (r.name === 'equipe') { body = viewEquipe(); title = 'Equipe'; }
     else body = `<div class="empty big"><b>Página não encontrada.</b><a class="btn ghost" href="#/">Ir ao painel</a></div>`;
     const focus = document.activeElement && document.activeElement.id === 'q' ? document.activeElement.selectionStart : null;
     app.innerHTML = shell(body, active);
+    navSetup();
     document.title = title + ' · Bunker';
     if (focus != null) { const el = document.getElementById('q'); if (el) { el.focus(); el.setSelectionRange(focus, focus); } }
     if (r.name === 'painel') countUp();
@@ -507,7 +541,25 @@
   }
 
   // ---------- eventos ----------
+  // menu de cima com rolagem para o lado: setas, roda do mouse e a aba ativa sempre à vista
+  let navX = 0;
+  function navSetup() {
+    const nav = document.getElementById('nav'); if (!nav) return;
+    const w = nav.parentElement;
+    const upd = () => { navX = nav.scrollLeft; const max = nav.scrollWidth - nav.clientWidth - 2; w.classList.toggle('can-l', nav.scrollLeft > 2); w.classList.toggle('can-r', nav.scrollLeft < max); };
+    nav.scrollLeft = navX;
+    const on = nav.querySelector('a.on');
+    if (on && (on.offsetLeft < nav.scrollLeft || on.offsetLeft + on.offsetWidth > nav.scrollLeft + nav.clientWidth)) nav.scrollLeft = on.offsetLeft - (nav.clientWidth - on.offsetWidth) / 2;
+    nav.addEventListener('scroll', upd, { passive: true });
+    nav.addEventListener('wheel', (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && nav.scrollWidth > nav.clientWidth) { e.preventDefault(); nav.scrollLeft += e.deltaY; } }, { passive: false });
+    upd();
+  }
+  window.addEventListener('resize', () => navSetup());
+  const navBy = (dir) => { const nav = document.getElementById('nav'); if (nav) nav.scrollBy({ left: dir * Math.max(160, nav.clientWidth * 0.6), behavior: 'smooth' }); };
+
   const A = {
+    navL: () => navBy(-1),
+    navR: () => navBy(1),
     closeModal, palette,
     theme: () => { const d = !isDark(); document.documentElement.dataset.theme = d ? 'dark' : 'light'; try { localStorage.setItem('bunker-theme', d ? 'dark' : 'light'); } catch (e) { /* ok */ } render(); },
     signOut: async () => { if (LIVE) { if (stopListen) stopListen(); stopListen = null; await LIVE.signOut(); DB = empty(); } UI.user = null; UI.denied = false; render(); },
