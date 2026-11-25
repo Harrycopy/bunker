@@ -172,7 +172,7 @@
   // ---------- casca ----------
   function shell(body, active) {
     const u = me();
-    const nav = [['painel', '#/', IC.home, 'Painel'], ['briefs', '#/briefs', IC.brief, 'Briefs Notion'], ['validados', '#/validados', IC.brief, 'Validados Internos'], ['edicao', '#/edicao', IC.film, 'Edição Notion'], ['edint', '#/edint', IC.film, 'Edição Internos'], ['inserts', '#/inserts', IC.drive, 'Bunker de Inserts'], ['processos', '#/processos', IC.proc, 'Processos'], ['calendario', '#/calendario', IC.cal, 'Calendário'], ['controle', '#/controle', IC.pulse, 'Controle'], ['equipe', '#/equipe', IC.team, 'Equipe']];
+    const nav = [['painel', '#/', IC.home, 'Painel'], ['briefs', '#/briefs', IC.brief, 'Briefs Notion'], ['validados', '#/validados', IC.brief, 'Validados Internos'], ['edicao', '#/edicao', IC.film, 'Edição Notion'], ['edint', '#/edint', IC.film, 'Edição Internos'], ['inserts', '#/inserts', IC.drive, 'Bunker de Inserts'], ['clusters', '#/clusters', IC.pulse, 'Clusters'], ['processos', '#/processos', IC.proc, 'Processos'], ['calendario', '#/calendario', IC.cal, 'Calendário'], ['controle', '#/controle', IC.pulse, 'Controle'], ['equipe', '#/equipe', IC.team, 'Equipe']];
     return `${LIVE ? '' : `<div class="demo">${IC.lock}<span>Demo com dados de exemplo · nada aqui mexe no Bunker real</span><a href="./">Entrar no Bunker real</a></div>`}
     <div class="stripe" aria-hidden="true"></div>
     <header class="top"><div class="top-in">
@@ -428,6 +428,60 @@
       ${list.length ? grouped(list, card, 'pasta', 'pastas') : `<div class="empty"><b>Nenhuma pasta de inserts ainda.</b><p class="muted small">${insRoot() ? 'A primeira pasta entra aqui assim que for criada.' : 'A guia "05 - Bunker de Inserts" ainda não existe no Bunker.'}</p></div>`}`;
   }
 
+
+  // ---------- clusters mensais e Hall da Fama (25/11/2026) ----------
+  const CL = { data: null, loading: false, err: '' };
+  function loadClusters() {
+    if (CL.data || CL.loading) return; CL.loading = true;
+    fetch('clusters.json?t=' + Math.floor(Date.now() / 60000)).then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then((j) => { CL.data = j; CL.loading = false; if (route().name === 'clusters') render(); })
+      .catch((e) => { CL.err = String(e.message || e); CL.loading = false; if (route().name === 'clusters') render(); });
+  }
+  const NOME_MES = { '01': 'janeiro', '02': 'fevereiro', '03': 'março', '04': 'abril', '05': 'maio', '06': 'junho', '07': 'julho', '08': 'agosto', '09': 'setembro', '10': 'outubro', '11': 'novembro', '12': 'dezembro' };
+  const mesNome = (m) => m === 'hall' ? 'Hall da Fama' : (NOME_MES[m.slice(5)] || m) + ' ' + m.slice(0, 4);
+  const CL_KEYS = { 'ED': 'ed', 'Diabetes': 'diabetes', 'Memória': 'memoria', 'Pulmão': 'pulmao', 'Emagrecimento': 'emagrecimento', 'Hipertensão': 'hipertensao', 'Neuropatia': 'neuropatia', 'Visão': 'visao' };
+  function clCell(item, n) {
+    if (!item) return '<td class="muted">sem dado</td>';
+    const x = item[1]; return `<td>${esc(item[0])}${x != null && n ? `<small class="mono muted"> · ${x} de ${n}</small>` : ''}</td>`;
+  }
+  function clTabela(campos, valores, n) {
+    return `<div class="tbl-w"><table class="tbl"><thead><tr><th>Campo</th><th>Cluster 01</th><th>Cluster 02</th><th>Cluster 03</th></tr></thead><tbody>${campos.map(([k, lbl]) => {
+      const v = valores[k] || []; return `<tr><td class="strong">${esc(lbl)}</td>${clCell(v[0], n)}${clCell(v[1], n)}${clCell(v[2], n)}</tr>`; }).join('')}</tbody></table></div>`;
+  }
+  function clCompara(campos, mes, hall) {
+    return `<div class="tbl-w"><table class="tbl"><thead><tr><th>Campo</th><th>Top 1 do mês</th><th>Top 1 do Hall da Fama</th><th></th></tr></thead><tbody>${campos.map(([k, lbl]) => {
+      const a = (mes.campos[k] || [])[0], b = (hall.copy[k] || [])[0];
+      const igual = a && b && a[0].toLowerCase().slice(0, 18) === b[0].toLowerCase().slice(0, 18);
+      return `<tr><td class="strong">${esc(lbl)}</td>${clCell(a, mes.n)}${clCell(b, hall.n)}<td>${a && b ? (igual ? '<span class="tag" style="--c:#8fcfa8"><i></i>igual</span>' : '<span class="tag" style="--c:#e8a36a"><i></i>mudou</span>') : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
+  }
+  function clEdicao(ed, n) {
+    const ks = Object.keys(ed || {}); if (!ks.length) return '';
+    return `<div class="tbl-w"><table class="tbl"><thead><tr><th>Campo de edição</th><th>Cluster 01</th><th>Cluster 02</th><th>Cluster 03</th></tr></thead><tbody>${ks.map((k) => {
+      const v = ed[k] || []; return `<tr><td class="strong">${esc(k)}</td>${clCell(v[0], n)}${clCell(v[1], n)}${clCell(v[2], n)}</tr>`; }).join('')}</tbody></table></div>`;
+  }
+  function viewClusters() {
+    loadClusters();
+    const head = `<div class="ph"><div><p class="eyebrow">Copy e edição por mês</p><h1 class="title">Clusters</h1><p class="muted">Cluster 01, 02 e 03 de cada mês (mês da página do SWIPE no Notion) e o Hall da Fama do nicho, que é o montante de todos os meses. Mês com N baixo é aposta ou indício, não padrão.</p></div></div>`;
+    if (!CL.data) return head + `<div class="empty"><b>${CL.err ? 'Não consegui carregar os clusters.' : 'Carregando os clusters...'}</b>${CL.err ? `<p class="muted small">${esc(CL.err)}</p>` : ''}</div>`;
+    const D = CL.data; const r = route(); const nomes = Object.keys(D.nichos);
+    const ni = nomes.find((x) => CL_KEYS[x] === r.q.n) || nomes[0]; const N = D.nichos[ni];
+    const meses = Object.keys(N.meses).sort().reverse(); const sel = r.q.m && (r.q.m === 'hall' || N.meses[r.q.m]) ? r.q.m : 'hall';
+    const segN = `<div class="seg">${nomes.map((x) => `<a class="${x === ni ? 'on' : ''}" href="#/clusters?n=${CL_KEYS[x]}">${esc(x)}</a>`).join('')}</div>`;
+    const segM = `<div class="seg"><a class="${sel === 'hall' ? 'on' : ''}" href="#/clusters?n=${CL_KEYS[ni]}&m=hall">Hall da Fama</a>${meses.map((m) => `<a class="${sel === m ? 'on' : ''}" href="#/clusters?n=${CL_KEYS[ni]}&m=${m}">${esc(mesNome(m))}${N.n_por_mes[m] ? ` <small class="mono">${N.n_por_mes[m]}</small>` : ''}</a>`).join('')}</div>`;
+    let corpo = '';
+    if (sel === 'hall') {
+      corpo = `<section class="block"><header class="bh"><h2>Copy · Hall da Fama</h2><span class="muted small">N = ${N.hall.n} arquivos, todos os meses</span></header>${clTabela(D.campos, N.hall.copy, N.hall.n)}</section>`
+        + (N.hall.edicao ? `<section class="block"><header class="bh"><h2>Edição · Hall da Fama</h2><span class="muted small">N = ${N.hall.edicao.n} briefings de edição</span></header>${clEdicao(N.hall.edicao.top, N.hall.edicao.n)}</section>` : `<section class="block"><p class="muted">Cluster de edição deste nicho ainda em produção.</p></section>`);
+    } else {
+      const M = N.meses[sel];
+      corpo = (M.copy ? `<section class="block"><header class="bh"><h2>Copy · ${esc(mesNome(sel))}</h2><span class="muted small">N = ${M.copy.n} arquivos${M.copy.n < 6 ? ' · N baixo, leia como aposta' : ''}</span></header>${clTabela(D.campos, M.copy.campos, M.copy.n)}</section>
+          <section class="block"><header class="bh"><h2>Mês contra Hall da Fama</h2></header>${clCompara(D.campos, M.copy, N.hall)}${(M.copy.mudou || []).length ? `<ul class="recent">${M.copy.mudou.map((x) => `<li><span>${esc(x)}</span></li>`).join('')}</ul>` : ''}</section>`
+          : `<section class="block"><p class="muted">Cluster de copy deste mês ainda em produção.</p></section>`)
+        + (M.edicao ? `<section class="block"><header class="bh"><h2>Edição · ${esc(mesNome(sel))}</h2><span class="muted small">N = ${M.edicao.n} briefings de edição</span></header>${clEdicao(M.edicao.top, M.edicao.n)}</section>` : '');
+    }
+    return head + segN + '<div style="height:10px"></div>' + segM + corpo;
+  }
+
   // ---------- processos ----------
   function viewProcessos() {
     const ps = processes();
@@ -518,7 +572,7 @@
 
   // ---------- busca rápida ----------
   function palette() {
-    const items = [['#/', 'Painel', 'Página'], ['#/briefs', 'Briefs', 'Página'], ['#/edicao', 'Briefing de edição', 'Página'], ['#/validados', 'Validados Internos', 'Página'], ['#/edint', 'Edição Internos', 'Página'], ['#/inserts', 'Bunker de Inserts', 'Página'], ['#/processos', 'Processos', 'Página'], ['#/calendario', 'Calendário', 'Página'], ['#/controle', 'Controle', 'Página'], ['#/equipe', 'Equipe', 'Página']]
+    const items = [['#/', 'Painel', 'Página'], ['#/briefs', 'Briefs', 'Página'], ['#/edicao', 'Briefing de edição', 'Página'], ['#/validados', 'Validados Internos', 'Página'], ['#/edint', 'Edição Internos', 'Página'], ['#/inserts', 'Bunker de Inserts', 'Página'], ['#/clusters', 'Clusters mensais e Hall da Fama', 'Página'], ['#/processos', 'Processos', 'Página'], ['#/calendario', 'Calendário', 'Página'], ['#/controle', 'Controle', 'Página'], ['#/equipe', 'Equipe', 'Página']]
       .concat(NICHES.map((n) => ['#/briefs?n=' + n.key, n.name, 'Nicho'])).concat(DB.pages.filter((p) => p.parent).map((p) => ['#/p/' + p.id, p.title, isBrief(p) ? nicheOf(p).name : isEdit(p) ? 'Edição · ' + nicheOf(p).name : 'Processo']));
     modalRoot.innerHTML = `<div class="mback" data-a="closeModal"></div><div class="pal"><label class="search big">${IC.search}<input id="pal" placeholder="Ir para um brief, nicho ou página…" autocomplete="off"></label><div class="pal-l" id="pal-l"></div></div>`;
     modalRoot.classList.add('on');
@@ -547,6 +601,7 @@
     else if (r.name === 'validados') { body = viewValidados(); title = 'Validados Internos'; }
     else if (r.name === 'edint') { body = viewEdInt(); title = 'Edição Internos'; }
     else if (r.name === 'inserts') { body = viewInserts(); title = 'Bunker de Inserts'; }
+    else if (r.name === 'clusters') { body = viewClusters(); title = 'Clusters'; }
     else if (r.name === 'p') { body = viewPage(r.id); const p = page(r.id); title = p ? p.title : 'Página'; active = p && isEdit(p) ? 'edicao' : p && isVal(p) ? 'validados' : p && isEi(p) ? 'edint' : p && isIns(p) ? 'inserts' : p && !isBrief(p) ? 'processos' : 'briefs'; }
     else if (r.name === 'calendario') { body = viewCalendario(); title = 'Calendário'; }
     else if (r.name === 'controle') { body = viewControle(); title = 'Controle'; }
