@@ -451,7 +451,7 @@
   function clCompara(campos, mes, hall) {
     return `<div class="tbl-w"><table class="tbl"><thead><tr><th>Campo</th><th>Top 1 do mês</th><th>Top 1 do Hall da Fama</th><th></th></tr></thead><tbody>${campos.map(([k, lbl]) => {
       const a = (mes.campos[k] || [])[0], b = (hall.copy[k] || [])[0];
-      const igual = a && b && a[0].toLowerCase().slice(0, 18) === b[0].toLowerCase().slice(0, 18);
+      const nz = (t) => String(t).toLowerCase().replace(/^(nota|fase)\s+/, '').replace(/\s+/g, ' ').trim().slice(0, 18); const igual = a && b && nz(a[0]) === nz(b[0]);
       return `<tr><td class="strong">${esc(lbl)}</td>${clCell(a, mes.n)}${clCell(b, hall.n)}<td>${a && b ? (igual ? '<span class="tag" style="--c:#8fcfa8"><i></i>igual</span>' : '<span class="tag" style="--c:#e8a36a"><i></i>mudou</span>') : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
   }
   function clEdicao(ed, n) {
