@@ -117,8 +117,11 @@
   const roots = () => DB.pages.filter((p) => !p.parent).sort((a, b) => a.sort - b.sort);
   const procRoot = () => roots().find((p) => fold(p.title).includes('processo'));
   const rootFor = (kind) => roots().find((p) => p.kind === 'page' && p.section === kind);
-  const isBrief = (p) => p.kind === 'vsl' || p.kind === 'ads';
+  // clusters (26/11/2026): Doc CLUSTER <NICHO> · <MÊS> e HALL DA FAMA COPY ficam na guia Clusters, separados dos briefings
+  const isCluster = (p) => (p.kind === 'vsl' || p.kind === 'ads') && /^\s*(CLUSTER\s|HALL DA FAMA COPY)/i.test(String(p.title || ''));
+  const isBrief = (p) => (p.kind === 'vsl' || p.kind === 'ads') && !isCluster(p);
   const briefs = () => DB.pages.filter(isBrief);
+  const clusters = () => DB.pages.filter(isCluster);
   const processes = () => { const r = procRoot(); return r ? DB.pages.filter((p) => p.parent === r.id) : []; };
   // briefings de edição: filhos da raiz "02 - Briefs de Edição" (kind page, nicho no offer)
   const rootBy = (needle, not) => roots().find((p) => { const t = fold(p.title); return t.includes(needle) && !(not && t.includes(not)); });
@@ -137,7 +140,7 @@
   const insRoot = () => rootBy('bunker de inserts');
   const isIns = (p) => { const r = insRoot(); return !!(r && p && p.parent === r.id); };
   const insertsN = () => { const r = insRoot(); return r ? DB.pages.filter((p) => p.parent === r.id) : []; };
-  const kindLabel = (p) => (isEdit(p) ? 'EDIÇÃO' : isVal(p) ? 'VALIDADO' : isEi(p) ? 'EDIÇÃO INTERNA' : isIns(p) ? 'INSERTS' : String(p.kind).toUpperCase());
+  const kindLabel = (p) => (isCluster(p) ? 'CLUSTER' : isEdit(p) ? 'EDIÇÃO' : isVal(p) ? 'VALIDADO' : isEi(p) ? 'EDIÇÃO INTERNA' : isIns(p) ? 'INSERTS' : String(p.kind).toUpperCase());
   const subido = (p) => (p.dueDate ? fmtDay(p.dueDate) + (p.dueTime ? ' · ' + p.dueTime : '') : fmtDT(p.created));
   const docsLink = (p) => (isHost(p.docs, 'docs.google.com') ? p.docs : isHost(p.drive, 'docs.google.com') ? p.drive : '');
   const driveLink = (p) => (p.drive && !isHost(p.drive, 'docs.google.com') ? p.drive : '');
@@ -343,27 +346,30 @@
   function viewBriefs() {
     loadML();
     const B = UI.briefs; const r = route(); if (r.q.n !== undefined && r.q.n !== B.lastN) { B.niche = r.q.n; B.lastN = r.q.n; }
-    let list = briefs();
+    const vc = r.q.v === 'cl'; const qs = (o) => { const a = Object.entries(Object.assign({ v: vc ? 'cl' : '', n: B.niche || '' }, o)).filter(([, x]) => x).map(([k, x]) => k + '=' + x); return '#/briefs' + (a.length ? '?' + a.join('&') : ''); };
+    let list = vc ? clusters() : briefs(); const total = list.length;
     const counts = {}; list.forEach((p) => { const k = nicheOf(p).key; counts[k] = (counts[k] || 0) + 1; });
     if (B.niche) list = list.filter((p) => nicheOf(p).key === B.niche);
     if (B.kind) list = list.filter((p) => p.kind === B.kind);
     const mesSel = r.q.m || ''; const antesMes = list;
     if (mesSel) list = list.filter((p) => mesesOf(p).includes(mesSel));
     if (B.q) list = list.filter((p) => compact(p.title + ' ' + p.offer + ' ' + nicheOf(p).name).includes(compact(B.q)) || fold(p.title).includes(fold(B.q)));
+    if (vc) list.sort((a, b) => (nicheIdx(a) - nicheIdx(b)) || (mesesOf(a)[0] === 'hall' ? 1 : 0) - (mesesOf(b)[0] === 'hall' ? 1 : 0) || String(mesesOf(b)[0]).localeCompare(String(mesesOf(a)[0])));
     const sorters = { recent: (a, b) => b.created.localeCompare(a.created), name: (a, b) => a.title.localeCompare(b.title, pt, { numeric: true }), niche: (a, b) => (nicheIdx(a) - nicheIdx(b)) || (a.kind === b.kind ? 0 : a.kind === 'ads' ? -1 : 1) || (lote(b) - lote(a)) || a.title.localeCompare(b.title, pt, { numeric: true }) };
-    list.sort(sorters[B.sort] || sorters.recent);
-    const chips = [['', 'Todos', briefs().length]].concat(NICHES.filter((n) => counts[n.key]).map((n) => [n.key, n.name, counts[n.key]])).concat(counts.outro ? [['outro', 'Sem nicho', counts.outro]] : []);
-    return `<div class="ph"><div><p class="eyebrow">Swipe de briefs</p><h1 class="title">Briefs</h1><p class="muted">${plural(list.length, 'brief', 'briefs')}${B.niche || B.q || B.kind ? ' com os filtros atuais' : ' no bunker'}.</p></div>
+    if (!vc) list.sort(sorters[B.sort] || sorters.recent);
+    const chips = [['', 'Todos', total]].concat(NICHES.filter((n) => counts[n.key]).map((n) => [n.key, n.name, counts[n.key]])).concat(counts.outro ? [['outro', 'Sem nicho', counts.outro]] : []);
+    return `<div class="ph"><div><p class="eyebrow">Swipe de briefs</p><h1 class="title">${vc ? 'Clusters' : 'Briefs'}</h1><p class="muted">${vc ? `${plural(list.length, 'Doc de cluster', 'Docs de cluster')}${B.niche || mesSel ? ' com os filtros atuais' : ''}. Um Doc por nicho e mês, com os Clusters 01, 02 e 03 do mês; o Hall da Fama junta todos os meses.` : `${plural(list.length, 'brief', 'briefs')}${B.niche || B.q || B.kind ? ' com os filtros atuais' : ' no bunker'}.`}</p></div>
         ${canEdit() ? `<button class="btn primary" data-a="newBrief">${IC.plus}Novo brief</button>` : ''}</div>
+      <div class="seg seg-guia" role="tablist" aria-label="Guia"><a class="${vc ? '' : 'on'}" href="${qs({ v: '', m: mesSel })}">Briefings dos ads</a><a class="${vc ? 'on' : ''}" href="${qs({ v: 'cl', m: mesSel === 'hall' ? '' : mesSel })}">Clusters</a></div>
       <div class="bar">
         <label class="search">${IC.search}<input id="q" data-in="q" value="${esc(B.q)}" placeholder="Buscar por lote, nicho, título…"></label>
         <div class="seg">${[['', 'Todos'], ['ads', 'Ads'], ['vsl', 'VSL']].map(([k, l]) => `<button class="${(B.kind || '') === k ? 'on' : ''}" data-a="kind" data-k="${k}">${l}</button>`).join('')}</div>
         <label class="sel"><span>Ordem</span><select data-ch="sort"><option value="recent"${B.sort === 'recent' ? ' selected' : ''}>Mais recentes</option><option value="name"${B.sort === 'name' ? ' selected' : ''}>Nome</option><option value="niche"${B.sort === 'niche' ? ' selected' : ''}>Nicho e lote</option></select></label>
         <div class="seg">${[['grid', IC.grid, 'Galeria'], ['table', IC.list, 'Tabela']].map(([k, ic, l]) => `<button class="${B.view === k ? 'on' : ''}" data-a="view" data-k="${k}" title="${l}">${ic}</button>`).join('')}</div>
       </div>
-      ${segMeses(antesMes, '#/briefs' + (B.niche ? '?n=' + B.niche : ''), mesSel)}
+      ${segMeses(antesMes, qs({}), mesSel)}
       <div class="chips">${chips.map(([k, l, c]) => { const n = NICHES.find((x) => x.key === k); return `<button class="chip${(B.niche || '') === k ? ' on' : ''}" data-a="niche" data-k="${k}" ${n ? `style="--c:${n.c}"` : ''}>${n ? '<i></i>' : ''}${esc(l)}<b>${c}</b></button>`; }).join('')}</div>
-      ${!list.length ? `<div class="empty"><b>Nenhum brief com esses filtros.</b><button class="btn ghost sm" data-a="clear">Limpar filtros</button></div>` : B.view === 'table' ? table(list) : B.sort === 'niche' ? grouped(list) : `<div class="gallery">${list.map(card).join('')}</div>`}`;
+      ${!list.length ? `<div class="empty"><b>Nenhum brief com esses filtros.</b><button class="btn ghost sm" data-a="clear">Limpar filtros</button></div>` : B.view === 'table' ? table(list) : vc ? grouped(list, card, 'cluster', 'clusters') : B.sort === 'niche' ? grouped(list) : `<div class="gallery">${list.map(card).join('')}</div>`}`;
   }
   // galeria por nicho: um bloco por nicho, lotes do maior para o menor
   function grouped(list, cardFn, um, varios) {
@@ -382,6 +388,7 @@
   }
   // com um mês escolhido, o card diz quantos ADs daquele mês o lote tem
   function mesLinha(p) {
+    if (isCluster(p)) { const ml = mlOf(p); return ml && mesesOf(p)[0] !== 'hall' ? `<p class="c-mes"><b>${ml.t} ads</b> no mês (N do cluster)</p>` : ''; }
     const k = String(route().q.m || '').slice(-2); const ml = mlOf(p);
     if (!k || route().q.m === 'hall' || !ml || !ml.mm[k]) return '';
     return `<p class="c-mes"><b>${ml.mm[k]} de ${ml.t}</b> ads de ${esc(NOME_MES_C[k] || k)}</p>`;

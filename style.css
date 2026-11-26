@@ -379,3 +379,5 @@ input.pg-title:hover { border-color: var(--line2); } input.pg-title:focus { bord
 .seg-mes small { opacity: .7; margin-left: 3px; }
 .c-mes{margin:.15rem 0 .35rem;font-size:.78rem;color:var(--fg2)}
 .c-mes b{font-variant-numeric:tabular-nums}
+.seg-guia { display: flex; width: fit-content; margin: 0 0 14px; }
+.seg-guia a { font-weight: 600; }
