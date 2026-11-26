@@ -128,6 +128,7 @@
   const edRoot = () => rootBy('edicao', 'interno');
   const isEdit = (p) => { const r = edRoot(); return !!(r && p && p.parent === r.id); };
   const edicoes = () => { const r = edRoot(); return r ? DB.pages.filter((p) => p.parent === r.id) : []; };
+  const isEdCluster = (p) => isEdit(p) && /^\s*(CLUSTER\s|HALL DA FAMA)/i.test(String(p.title || ''));
   // validados internos: filhos da raiz "03 - Validados Internos" (kind page, nicho no offer)
   const valRoot = () => roots().find((p) => fold(p.title).includes('validados internos'));
   const isVal = (p) => { const r = valRoot(); return !!(r && p && p.parent === r.id); };
@@ -140,7 +141,7 @@
   const insRoot = () => rootBy('bunker de inserts');
   const isIns = (p) => { const r = insRoot(); return !!(r && p && p.parent === r.id); };
   const insertsN = () => { const r = insRoot(); return r ? DB.pages.filter((p) => p.parent === r.id) : []; };
-  const kindLabel = (p) => (isCluster(p) ? 'CLUSTER' : isEdit(p) ? 'EDIÇÃO' : isVal(p) ? 'VALIDADO' : isEi(p) ? 'EDIÇÃO INTERNA' : isIns(p) ? 'INSERTS' : String(p.kind).toUpperCase());
+  const kindLabel = (p) => (isCluster(p) || isEdCluster(p) ? 'CLUSTER' : isEdit(p) ? 'EDIÇÃO' : isVal(p) ? 'VALIDADO' : isEi(p) ? 'EDIÇÃO INTERNA' : isIns(p) ? 'INSERTS' : String(p.kind).toUpperCase());
   const subido = (p) => (p.dueDate ? fmtDay(p.dueDate) + (p.dueTime ? ' · ' + p.dueTime : '') : fmtDT(p.created));
   const docsLink = (p) => (isHost(p.docs, 'docs.google.com') ? p.docs : isHost(p.drive, 'docs.google.com') ? p.drive : '');
   const driveLink = (p) => (p.drive && !isHost(p.drive, 'docs.google.com') ? p.drive : '');
@@ -388,7 +389,7 @@
   }
   // com um mês escolhido, o card diz quantos ADs daquele mês o lote tem
   function mesLinha(p) {
-    if (isCluster(p)) { const ml = mlOf(p); return ml && mesesOf(p)[0] !== 'hall' ? `<p class="c-mes"><b>${ml.t} ads</b> no mês (N do cluster)</p>` : ''; }
+    if (isCluster(p) || isEdCluster(p)) { const ml = mlOf(p); return ml && mesesOf(p)[0] !== 'hall' ? `<p class="c-mes"><b>${ml.t} ads</b> no mês (N do cluster)</p>` : ''; }
     const k = String(route().q.m || '').slice(-2); const ml = mlOf(p);
     if (!k || route().q.m === 'hall' || !ml || !ml.mm[k]) return '';
     return `<p class="c-mes"><b>${ml.mm[k]} de ${ml.t}</b> ads de ${esc(NOME_MES_C[k] || k)}</p>`;
@@ -437,15 +438,17 @@
   function viewEdicao() {
     loadML();
     const r = route(); const nk = r.q.n || '';
-    let list = edicoes(); if (nk) list = list.filter((p) => nicheOf(p).key === nk);
+    const vc = r.q.v === 'cl'; const qs = (o) => { const a = Object.entries(Object.assign({ v: vc ? 'cl' : '', n: nk }, o)).filter(([, x]) => x).map(([k, x]) => k + '=' + x); return '#/edicao' + (a.length ? '?' + a.join('&') : ''); };
+    let list = edicoes().filter((p) => vc ? isEdCluster(p) : !isEdCluster(p)); if (nk) list = list.filter((p) => nicheOf(p).key === nk);
     const mesSel = r.q.m || ''; const antesMes = list;
     if (mesSel) list = list.filter((p) => mesesOf(p).includes(mesSel));
-    list = list.slice().sort((a, b) => (nicheIdx(a) - nicheIdx(b)) || (lote(b) - lote(a)) || b.created.localeCompare(a.created));
+    list = list.slice().sort(vc ? (a, b) => (nicheIdx(a) - nicheIdx(b)) || (mesesOf(a)[0] === 'hall' ? 1 : 0) - (mesesOf(b)[0] === 'hall' ? 1 : 0) || String(mesesOf(b)[0]).localeCompare(String(mesesOf(a)[0])) : (a, b) => (nicheIdx(a) - nicheIdx(b)) || (lote(b) - lote(a)) || b.created.localeCompare(a.created));
     const usados = NICHES.filter((n) => edicoes().some((p) => nicheOf(p) === n));
-    return `<div class="ph"><div><p class="eyebrow">Edição congruente com a copy</p><h1 class="title">Briefing de edição</h1><p class="muted">${plural(list.length, 'Doc', 'Docs')} de briefing de edição${nk ? ' neste nicho' : ''}. Um Doc por lote, com os mesmos ads do brief de copy; o mês de cada AD é o da data anotada no SWIPE (sem data, o da página do Notion); escolha um mês para ver os lotes que têm ads dele, ou o Hall da Fama, que junta todos os meses.</p></div>${canEdit() ? `<button class="btn primary" data-a="newBrief" data-k="edicao">${IC.plus}Novo briefing de edição</button>` : ''}</div>
-      ${usados.length > 1 ? `<div class="seg"><a class="${nk ? '' : 'on'}" href="#/edicao">Todos</a>${usados.map((n) => `<a class="${nk === n.key ? 'on' : ''}" href="#/edicao?n=${n.key}">${esc(n.short)}</a>`).join('')}</div>` : ''}
-      ${segMeses(antesMes, '#/edicao' + (nk ? '?n=' + nk : ''), mesSel)}
-      ${list.length ? grouped(list, card, 'Doc', 'Docs') : `<div class="empty"><b>Nenhum briefing de edição ainda.</b><p class="muted small">${edRoot() ? 'O primeiro Doc entra aqui assim que for criado.' : 'A guia "02 - Briefs de Edição" ainda não existe no Bunker.'}</p></div>`}`;
+    return `<div class="ph"><div><p class="eyebrow">Edição congruente com a copy</p><h1 class="title">${vc ? 'Clusters de edição' : 'Briefing de edição'}</h1><p class="muted">${vc ? `${plural(list.length, 'Doc de cluster', 'Docs de cluster')} de edição${nk || mesSel ? ' com os filtros atuais' : ''}. Um Doc por nicho e mês, com os Clusters 01, 02 e 03 do mês e os números; o Hall da Fama junta todos os meses.` : `${plural(list.length, 'Doc', 'Docs')} de briefing de edição${nk ? ' neste nicho' : ''}. Um Doc por lote, com os mesmos ads do brief de copy; o mês de cada AD é o da data anotada no SWIPE (sem data, o da página do Notion); escolha um mês para ver os lotes que têm ads dele.`}</p></div>${canEdit() ? `<button class="btn primary" data-a="newBrief" data-k="edicao">${IC.plus}Novo briefing de edição</button>` : ''}</div>
+      <div class="seg seg-guia" role="tablist" aria-label="Guia"><a class="${vc ? '' : 'on'}" href="${qs({ v: '', m: mesSel === 'hall' ? '' : mesSel })}">Briefings dos ads</a><a class="${vc ? 'on' : ''}" href="${qs({ v: 'cl', m: mesSel })}">Clusters</a></div>
+      ${usados.length > 1 ? `<div class="seg"><a class="${nk ? '' : 'on'}" href="${qs({ n: '', m: mesSel })}">Todos</a>${usados.map((n) => `<a class="${nk === n.key ? 'on' : ''}" href="${qs({ n: n.key, m: mesSel })}">${esc(n.short)}</a>`).join('')}</div>` : ''}
+      ${segMeses(antesMes, qs({}), mesSel)}
+      ${list.length ? grouped(list, card, vc ? 'cluster' : 'Doc', vc ? 'clusters' : 'Docs') : `<div class="empty"><b>Nenhum briefing de edição ainda.</b><p class="muted small">${edRoot() ? 'O primeiro Doc entra aqui assim que for criado.' : 'A guia "02 - Briefs de Edição" ainda não existe no Bunker.'}</p></div>`}`;
   }
 
   // ---------- validados internos ----------
