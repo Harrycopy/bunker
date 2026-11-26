@@ -85,11 +85,15 @@
     fetch('meses_lotes.json?t=' + Math.floor(Date.now() / 60000)).then((r) => r.ok ? r.json() : {}).catch(() => ({}))
       .then((j) => { ML.data = j || {}; ML.loading = false; if (['briefs', 'edicao'].includes(route().name)) render(); });
   }
-  const mlOf = (p) => { const id = (String(p.docs || '').match(/\/d\/([\w-]+)/) || [])[1]; return (ML.data && id && ML.data[id]) || null; };
+  const mlOf = (p) => {
+    const id = (String(p.docs || '').match(/\/d\/([\w-]+)/) || [])[1]; const x = ML.data && id && ML.data[id]; if (!x) return null;
+    if (!x.mm) { x.mm = {}; Object.keys(x.m).forEach((k) => { x.mm[k.slice(-2)] = (x.mm[k.slice(-2)] || 0) + x.m[k]; }); }
+    return x;
+  };
   function mesesOf(p) {
     const t = String(p.title || '');
     if (/hall da fama/i.test(t)) return ['hall'];
-    const ml = mlOf(p); if (ml) return Object.keys(ml.m).sort((a, b) => ml.m[b] - ml.m[a]);
+    const ml = mlOf(p); if (ml) return Object.keys(ml.mm).sort((a, b) => ml.mm[b] - ml.mm[a]);
     const m = t.match(/·\s*((?:JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)(?:\s*\+\s*(?:JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ))*)\s*$/i);
     return m ? m[1].toUpperCase().split(/\s*\+\s*/).map((x) => MES_N[x]) : [];
   }
@@ -99,7 +103,7 @@
     const temHall = list.some((p) => mesesOf(p)[0] === 'hall');
     if (!ms.length && !temHall) return '';
     const sep = base.includes('?') ? '&' : '?';
-    const cnt = (k) => { const c = list.filter((p) => mesesOf(p).includes(k)); const ads = c.reduce((a, p) => a + ((mlOf(p) || { m: {} }).m[k] || 0), 0); return ads ? ads + ' ads' : c.length; };
+    const cnt = (k) => { const c = list.filter((p) => mesesOf(p).includes(k)); const ads = c.reduce((a, p) => a + ((mlOf(p) || { mm: {} }).mm[k] || 0), 0); return ads ? ads + ' ads' : c.length; };
     return `<div class="seg seg-mes" role="tablist" aria-label="Mês"><a class="${sel ? '' : 'on'}" href="${base}">Todos os meses</a>${temHall ? `<a class="${sel === 'hall' ? 'on' : ''}" href="${base}${sep}m=hall">Hall da Fama</a>` : ''}${ms.map((k) => `<a class="${sel === k ? 'on' : ''}" href="${base}${sep}m=${k}">${MES_L[k]} <small class="mono">${cnt(k)}</small></a>`).join('')}</div>`;
   }
   const art = (n, cls) => (window.BunkerArt && window.BunkerArt(n.key, cls, n)) || '';
@@ -378,9 +382,9 @@
   }
   // com um mês escolhido, o card diz quantos ADs daquele mês o lote tem
   function mesLinha(p) {
-    const k = route().q.m; const ml = mlOf(p);
-    if (!k || k === 'hall' || !ml || !ml.m[k]) return '';
-    return `<p class="c-mes"><b>${ml.m[k]} de ${ml.t}</b> ads de ${esc(NOME_MES_C[k.slice(5)] || k)}</p>`;
+    const k = String(route().q.m || '').slice(-2); const ml = mlOf(p);
+    if (!k || route().q.m === 'hall' || !ml || !ml.mm[k]) return '';
+    return `<p class="c-mes"><b>${ml.mm[k]} de ${ml.t}</b> ads de ${esc(NOME_MES_C[k] || k)}</p>`;
   }
   const NOME_MES_C = { '08': 'agosto', '09': 'setembro', '10': 'outubro', '11': 'novembro', '12': 'dezembro', '01': 'janeiro', '02': 'fevereiro', '03': 'março', '04': 'abril', '05': 'maio', '06': 'junho', '07': 'julho' };
   function table(list) {
