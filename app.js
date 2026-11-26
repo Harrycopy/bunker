@@ -78,9 +78,18 @@
   // mês do lote (26/11/2026): o título termina em "· OUT" ou "· NOV + OUT"; Hall da Fama é o montante de todos os meses
   const MES_N = { JAN: '01', FEV: '02', MAR: '03', ABR: '04', MAI: '05', JUN: '06', JUL: '07', AGO: '08', SET: '09', OUT: '10', NOV: '11', DEZ: '12' };
   const MES_L = { '01': 'Jan', '02': 'Fev', '03': 'Mar', '04': 'Abr', '05': 'Mai', '06': 'Jun', '07': 'Jul', '08': 'Ago', '09': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez' };
+  // meses_lotes.json: quantos ADs de cada mês tem cada Doc de lote (mês da data anotada no SWIPE; sem data, mês da página do Notion)
+  const ML = { data: null, loading: false };
+  function loadML() {
+    if (ML.data || ML.loading) return; ML.loading = true;
+    fetch('meses_lotes.json?t=' + Math.floor(Date.now() / 60000)).then((r) => r.ok ? r.json() : {}).catch(() => ({}))
+      .then((j) => { ML.data = j || {}; ML.loading = false; if (['briefs', 'edicao'].includes(route().name)) render(); });
+  }
+  const mlOf = (p) => { const id = (String(p.docs || '').match(/\/d\/([\w-]+)/) || [])[1]; return (ML.data && id && ML.data[id]) || null; };
   function mesesOf(p) {
     const t = String(p.title || '');
     if (/hall da fama/i.test(t)) return ['hall'];
+    const ml = mlOf(p); if (ml) return Object.keys(ml.m).sort((a, b) => ml.m[b] - ml.m[a]);
     const m = t.match(/·\s*((?:JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)(?:\s*\+\s*(?:JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ))*)\s*$/i);
     return m ? m[1].toUpperCase().split(/\s*\+\s*/).map((x) => MES_N[x]) : [];
   }
@@ -90,7 +99,7 @@
     const temHall = list.some((p) => mesesOf(p)[0] === 'hall');
     if (!ms.length && !temHall) return '';
     const sep = base.includes('?') ? '&' : '?';
-    const cnt = (k) => list.filter((p) => mesesOf(p).includes(k)).length;
+    const cnt = (k) => { const c = list.filter((p) => mesesOf(p).includes(k)); const ads = c.reduce((a, p) => a + ((mlOf(p) || { m: {} }).m[k] || 0), 0); return ads ? ads + ' ads' : c.length; };
     return `<div class="seg seg-mes" role="tablist" aria-label="Mês"><a class="${sel ? '' : 'on'}" href="${base}">Todos os meses</a>${temHall ? `<a class="${sel === 'hall' ? 'on' : ''}" href="${base}${sep}m=hall">Hall da Fama</a>` : ''}${ms.map((k) => `<a class="${sel === k ? 'on' : ''}" href="${base}${sep}m=${k}">${MES_L[k]} <small class="mono">${cnt(k)}</small></a>`).join('')}</div>`;
   }
   const art = (n, cls) => (window.BunkerArt && window.BunkerArt(n.key, cls, n)) || '';
@@ -328,6 +337,7 @@
 
   // ---------- briefs ----------
   function viewBriefs() {
+    loadML();
     const B = UI.briefs; const r = route(); if (r.q.n !== undefined && r.q.n !== B.lastN) { B.niche = r.q.n; B.lastN = r.q.n; }
     let list = briefs();
     const counts = {}; list.forEach((p) => { const k = nicheOf(p).key; counts[k] = (counts[k] || 0) + 1; });
@@ -362,10 +372,17 @@
     return `<article class="card" style="--c:${n.c}" data-warm="${p.id}">
       <a class="c-cover" href="#/p/${p.id}"><span class="c-glow"></span>${art(n) || emblem(n, 46)}<span class="c-niche">${esc(n.short)}</span><span class="c-kind">${esc(kindLabel(p))}</span></a>
       <div class="c-body"><a class="c-title" href="#/p/${p.id}">${esc(p.title)}</a>
-        <p class="c-meta">${esc(subido(p))} · ${esc((person(p.by) || {}).name || 'Membro')}</p>
+        <p class="c-meta">${esc(subido(p))} · ${esc((person(p.by) || {}).name || 'Membro')}</p>${mesLinha(p)}
         <div class="c-act">${docsLink(p) ? `<a class="btn ghost xs" href="${esc(safeUrl(docsLink(p)))}" target="_blank" rel="noopener">${IC.docs}Docs</a>` : '<span class="miss">sem Docs</span>'}${driveLink(p) ? `<a class="btn ghost xs" href="${esc(safeUrl(driveLink(p)))}" target="_blank" rel="noopener">${IC.drive}Drive</a>` : '<span class="miss">sem Drive</span>'}
         ${canEdit() ? `<button class="btn ghost xs danger" data-a="del" data-id="${p.id}" title="Excluir">${IC.trash}</button>` : ''}</div></div></article>`;
   }
+  // com um mês escolhido, o card diz quantos ADs daquele mês o lote tem
+  function mesLinha(p) {
+    const k = route().q.m; const ml = mlOf(p);
+    if (!k || k === 'hall' || !ml || !ml.m[k]) return '';
+    return `<p class="c-mes"><b>${ml.m[k]} de ${ml.t}</b> ads de ${esc(NOME_MES_C[k.slice(5)] || k)}</p>`;
+  }
+  const NOME_MES_C = { '08': 'agosto', '09': 'setembro', '10': 'outubro', '11': 'novembro', '12': 'dezembro', '01': 'janeiro', '02': 'fevereiro', '03': 'março', '04': 'abril', '05': 'maio', '06': 'junho', '07': 'julho' };
   function table(list) {
     return `<div class="tbl-w"><table class="tbl"><thead><tr><th>Brief</th><th>Nicho</th><th>Tipo</th><th>Subido em</th><th>Criado por</th><th>Links</th>${canEdit() ? '<th></th>' : ''}</tr></thead><tbody>
       ${list.map((p) => { const n = nicheOf(p); return `<tr data-warm="${p.id}"><td><a class="strong" href="#/p/${p.id}">${esc(p.title)}</a></td><td><span class="tag" style="--c:${n.c}"><i></i>${esc(n.name)}</span></td><td class="mono">${esc(kindLabel(p))}</td><td class="mono">${esc(subido(p))}</td><td>${esc((person(p.by) || {}).name || 'Membro')}</td><td>${quick(p)}</td>${canEdit() ? `<td><button class="btn ghost xs danger" data-a="del" data-id="${p.id}">${IC.trash}</button></td>` : ''}</tr>`; }).join('')}
@@ -407,13 +424,14 @@
 
   // ---------- briefings de edição ----------
   function viewEdicao() {
+    loadML();
     const r = route(); const nk = r.q.n || '';
     let list = edicoes(); if (nk) list = list.filter((p) => nicheOf(p).key === nk);
     const mesSel = r.q.m || ''; const antesMes = list;
     if (mesSel) list = list.filter((p) => mesesOf(p).includes(mesSel));
     list = list.slice().sort((a, b) => (nicheIdx(a) - nicheIdx(b)) || (lote(b) - lote(a)) || b.created.localeCompare(a.created));
     const usados = NICHES.filter((n) => edicoes().some((p) => nicheOf(p) === n));
-    return `<div class="ph"><div><p class="eyebrow">Edição congruente com a copy</p><h1 class="title">Briefing de edição</h1><p class="muted">${plural(list.length, 'Doc', 'Docs')} de briefing de edição${nk ? ' neste nicho' : ''}. Um Doc por lote, com os mesmos ads do brief de copy; o cluster de cada mês fica no lote onde o mês começa e o Hall da Fama junta todos os meses.</p></div>${canEdit() ? `<button class="btn primary" data-a="newBrief" data-k="edicao">${IC.plus}Novo briefing de edição</button>` : ''}</div>
+    return `<div class="ph"><div><p class="eyebrow">Edição congruente com a copy</p><h1 class="title">Briefing de edição</h1><p class="muted">${plural(list.length, 'Doc', 'Docs')} de briefing de edição${nk ? ' neste nicho' : ''}. Um Doc por lote, com os mesmos ads do brief de copy; o mês de cada AD é o da data anotada no SWIPE (sem data, o da página do Notion); escolha um mês para ver os lotes que têm ads dele, ou o Hall da Fama, que junta todos os meses.</p></div>${canEdit() ? `<button class="btn primary" data-a="newBrief" data-k="edicao">${IC.plus}Novo briefing de edição</button>` : ''}</div>
       ${usados.length > 1 ? `<div class="seg"><a class="${nk ? '' : 'on'}" href="#/edicao">Todos</a>${usados.map((n) => `<a class="${nk === n.key ? 'on' : ''}" href="#/edicao?n=${n.key}">${esc(n.short)}</a>`).join('')}</div>` : ''}
       ${segMeses(antesMes, '#/edicao' + (nk ? '?n=' + nk : ''), mesSel)}
       ${list.length ? grouped(list, card, 'Doc', 'Docs') : `<div class="empty"><b>Nenhum briefing de edição ainda.</b><p class="muted small">${edRoot() ? 'O primeiro Doc entra aqui assim que for criado.' : 'A guia "02 - Briefs de Edição" ainda não existe no Bunker.'}</p></div>`}`;
