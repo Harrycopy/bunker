@@ -75,6 +75,24 @@
   }
   const nicheIdx = (p) => { const i = NICHES.indexOf(nicheOf(p)); return i < 0 ? 99 : i; };
   const lote = (p) => +((String(p.title).match(/lote\s*(\d+)/i) || [])[1] || 0);
+  // mês do lote (26/11/2026): o título termina em "· OUT" ou "· NOV + OUT"; Hall da Fama é o montante de todos os meses
+  const MES_N = { JAN: '01', FEV: '02', MAR: '03', ABR: '04', MAI: '05', JUN: '06', JUL: '07', AGO: '08', SET: '09', OUT: '10', NOV: '11', DEZ: '12' };
+  const MES_L = { '01': 'Jan', '02': 'Fev', '03': 'Mar', '04': 'Abr', '05': 'Mai', '06': 'Jun', '07': 'Jul', '08': 'Ago', '09': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez' };
+  function mesesOf(p) {
+    const t = String(p.title || '');
+    if (/hall da fama/i.test(t)) return ['hall'];
+    const m = t.match(/·\s*((?:JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)(?:\s*\+\s*(?:JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ))*)\s*$/i);
+    return m ? m[1].toUpperCase().split(/\s*\+\s*/).map((x) => MES_N[x]) : [];
+  }
+  // barra de meses: Todos, Hall da Fama e cada mês que aparece na lista (link com o mês na URL)
+  function segMeses(list, base, sel) {
+    const ms = [...new Set(list.flatMap(mesesOf))].filter((x) => x !== 'hall').sort();
+    const temHall = list.some((p) => mesesOf(p)[0] === 'hall');
+    if (!ms.length && !temHall) return '';
+    const sep = base.includes('?') ? '&' : '?';
+    const cnt = (k) => list.filter((p) => mesesOf(p).includes(k)).length;
+    return `<div class="seg seg-mes" role="tablist" aria-label="Mês"><a class="${sel ? '' : 'on'}" href="${base}">Todos os meses</a>${temHall ? `<a class="${sel === 'hall' ? 'on' : ''}" href="${base}${sep}m=hall">Hall da Fama</a>` : ''}${ms.map((k) => `<a class="${sel === k ? 'on' : ''}" href="${base}${sep}m=${k}">${MES_L[k]} <small class="mono">${cnt(k)}</small></a>`).join('')}</div>`;
+  }
   const art = (n, cls) => (window.BunkerArt && window.BunkerArt(n.key, cls, n)) || '';
   const emblem = (n, size) => `<svg class="emb" viewBox="0 0 24 24" width="${size || 28}" height="${size || 28}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${n.icon}</svg>`;
 
@@ -172,7 +190,7 @@
   // ---------- casca ----------
   function shell(body, active) {
     const u = me();
-    const nav = [['painel', '#/', IC.home, 'Painel'], ['briefs', '#/briefs', IC.brief, 'Briefs Notion'], ['validados', '#/validados', IC.brief, 'Validados Internos'], ['edicao', '#/edicao', IC.film, 'Edição Notion'], ['edint', '#/edint', IC.film, 'Edição Internos'], ['inserts', '#/inserts', IC.drive, 'Bunker de Inserts'], ['clusters', '#/clusters', IC.pulse, 'Clusters'], ['processos', '#/processos', IC.proc, 'Processos'], ['calendario', '#/calendario', IC.cal, 'Calendário'], ['controle', '#/controle', IC.pulse, 'Controle'], ['equipe', '#/equipe', IC.team, 'Equipe']];
+    const nav = [['painel', '#/', IC.home, 'Painel'], ['briefs', '#/briefs', IC.brief, 'Briefs Notion'], ['validados', '#/validados', IC.brief, 'Validados Internos'], ['edicao', '#/edicao', IC.film, 'Edição Notion'], ['edint', '#/edint', IC.film, 'Edição Internos'], ['inserts', '#/inserts', IC.drive, 'Bunker de Inserts'], ['processos', '#/processos', IC.proc, 'Processos'], ['calendario', '#/calendario', IC.cal, 'Calendário'], ['controle', '#/controle', IC.pulse, 'Controle'], ['equipe', '#/equipe', IC.team, 'Equipe']];
     return `${LIVE ? '' : `<div class="demo">${IC.lock}<span>Demo com dados de exemplo · nada aqui mexe no Bunker real</span><a href="./">Entrar no Bunker real</a></div>`}
     <div class="stripe" aria-hidden="true"></div>
     <header class="top"><div class="top-in">
@@ -315,6 +333,8 @@
     const counts = {}; list.forEach((p) => { const k = nicheOf(p).key; counts[k] = (counts[k] || 0) + 1; });
     if (B.niche) list = list.filter((p) => nicheOf(p).key === B.niche);
     if (B.kind) list = list.filter((p) => p.kind === B.kind);
+    const mesSel = r.q.m || ''; const antesMes = list;
+    if (mesSel) list = list.filter((p) => mesesOf(p).includes(mesSel));
     if (B.q) list = list.filter((p) => compact(p.title + ' ' + p.offer + ' ' + nicheOf(p).name).includes(compact(B.q)) || fold(p.title).includes(fold(B.q)));
     const sorters = { recent: (a, b) => b.created.localeCompare(a.created), name: (a, b) => a.title.localeCompare(b.title, pt, { numeric: true }), niche: (a, b) => (nicheIdx(a) - nicheIdx(b)) || (a.kind === b.kind ? 0 : a.kind === 'ads' ? -1 : 1) || (lote(b) - lote(a)) || a.title.localeCompare(b.title, pt, { numeric: true }) };
     list.sort(sorters[B.sort] || sorters.recent);
@@ -327,6 +347,7 @@
         <label class="sel"><span>Ordem</span><select data-ch="sort"><option value="recent"${B.sort === 'recent' ? ' selected' : ''}>Mais recentes</option><option value="name"${B.sort === 'name' ? ' selected' : ''}>Nome</option><option value="niche"${B.sort === 'niche' ? ' selected' : ''}>Nicho e lote</option></select></label>
         <div class="seg">${[['grid', IC.grid, 'Galeria'], ['table', IC.list, 'Tabela']].map(([k, ic, l]) => `<button class="${B.view === k ? 'on' : ''}" data-a="view" data-k="${k}" title="${l}">${ic}</button>`).join('')}</div>
       </div>
+      ${segMeses(antesMes, '#/briefs' + (B.niche ? '?n=' + B.niche : ''), mesSel)}
       <div class="chips">${chips.map(([k, l, c]) => { const n = NICHES.find((x) => x.key === k); return `<button class="chip${(B.niche || '') === k ? ' on' : ''}" data-a="niche" data-k="${k}" ${n ? `style="--c:${n.c}"` : ''}>${n ? '<i></i>' : ''}${esc(l)}<b>${c}</b></button>`; }).join('')}</div>
       ${!list.length ? `<div class="empty"><b>Nenhum brief com esses filtros.</b><button class="btn ghost sm" data-a="clear">Limpar filtros</button></div>` : B.view === 'table' ? table(list) : B.sort === 'niche' ? grouped(list) : `<div class="gallery">${list.map(card).join('')}</div>`}`;
   }
@@ -388,10 +409,13 @@
   function viewEdicao() {
     const r = route(); const nk = r.q.n || '';
     let list = edicoes(); if (nk) list = list.filter((p) => nicheOf(p).key === nk);
+    const mesSel = r.q.m || ''; const antesMes = list;
+    if (mesSel) list = list.filter((p) => mesesOf(p).includes(mesSel));
     list = list.slice().sort((a, b) => (nicheIdx(a) - nicheIdx(b)) || (lote(b) - lote(a)) || b.created.localeCompare(a.created));
     const usados = NICHES.filter((n) => edicoes().some((p) => nicheOf(p) === n));
-    return `<div class="ph"><div><p class="eyebrow">Edição congruente com a copy</p><h1 class="title">Briefing de edição</h1><p class="muted">${plural(list.length, 'Doc', 'Docs')} de briefing de edição${nk ? ' neste nicho' : ''}. Cada Doc tem até 15 ads, com os inserts separados por função no Drive.</p></div>${canEdit() ? `<button class="btn primary" data-a="newBrief" data-k="edicao">${IC.plus}Novo briefing de edição</button>` : ''}</div>
+    return `<div class="ph"><div><p class="eyebrow">Edição congruente com a copy</p><h1 class="title">Briefing de edição</h1><p class="muted">${plural(list.length, 'Doc', 'Docs')} de briefing de edição${nk ? ' neste nicho' : ''}. Um Doc por lote, com os mesmos ads do brief de copy; o cluster de cada mês fica no lote onde o mês começa e o Hall da Fama junta todos os meses.</p></div>${canEdit() ? `<button class="btn primary" data-a="newBrief" data-k="edicao">${IC.plus}Novo briefing de edição</button>` : ''}</div>
       ${usados.length > 1 ? `<div class="seg"><a class="${nk ? '' : 'on'}" href="#/edicao">Todos</a>${usados.map((n) => `<a class="${nk === n.key ? 'on' : ''}" href="#/edicao?n=${n.key}">${esc(n.short)}</a>`).join('')}</div>` : ''}
+      ${segMeses(antesMes, '#/edicao' + (nk ? '?n=' + nk : ''), mesSel)}
       ${list.length ? grouped(list, card, 'Doc', 'Docs') : `<div class="empty"><b>Nenhum briefing de edição ainda.</b><p class="muted small">${edRoot() ? 'O primeiro Doc entra aqui assim que for criado.' : 'A guia "02 - Briefs de Edição" ainda não existe no Bunker.'}</p></div>`}`;
   }
 
@@ -572,7 +596,7 @@
 
   // ---------- busca rápida ----------
   function palette() {
-    const items = [['#/', 'Painel', 'Página'], ['#/briefs', 'Briefs', 'Página'], ['#/edicao', 'Briefing de edição', 'Página'], ['#/validados', 'Validados Internos', 'Página'], ['#/edint', 'Edição Internos', 'Página'], ['#/inserts', 'Bunker de Inserts', 'Página'], ['#/clusters', 'Clusters mensais e Hall da Fama', 'Página'], ['#/processos', 'Processos', 'Página'], ['#/calendario', 'Calendário', 'Página'], ['#/controle', 'Controle', 'Página'], ['#/equipe', 'Equipe', 'Página']]
+    const items = [['#/', 'Painel', 'Página'], ['#/briefs', 'Briefs', 'Página'], ['#/edicao', 'Briefing de edição', 'Página'], ['#/validados', 'Validados Internos', 'Página'], ['#/edint', 'Edição Internos', 'Página'], ['#/inserts', 'Bunker de Inserts', 'Página'], ['#/processos', 'Processos', 'Página'], ['#/calendario', 'Calendário', 'Página'], ['#/controle', 'Controle', 'Página'], ['#/equipe', 'Equipe', 'Página']]
       .concat(NICHES.map((n) => ['#/briefs?n=' + n.key, n.name, 'Nicho'])).concat(DB.pages.filter((p) => p.parent).map((p) => ['#/p/' + p.id, p.title, isBrief(p) ? nicheOf(p).name : isEdit(p) ? 'Edição · ' + nicheOf(p).name : 'Processo']));
     modalRoot.innerHTML = `<div class="mback" data-a="closeModal"></div><div class="pal"><label class="search big">${IC.search}<input id="pal" placeholder="Ir para um brief, nicho ou página…" autocomplete="off"></label><div class="pal-l" id="pal-l"></div></div>`;
     modalRoot.classList.add('on');
@@ -601,7 +625,7 @@
     else if (r.name === 'validados') { body = viewValidados(); title = 'Validados Internos'; }
     else if (r.name === 'edint') { body = viewEdInt(); title = 'Edição Internos'; }
     else if (r.name === 'inserts') { body = viewInserts(); title = 'Bunker de Inserts'; }
-    else if (r.name === 'clusters') { body = viewClusters(); title = 'Clusters'; }
+    else if (r.name === 'clusters') { location.hash = '#/briefs'; return; }
     else if (r.name === 'p') { body = viewPage(r.id); const p = page(r.id); title = p ? p.title : 'Página'; active = p && isEdit(p) ? 'edicao' : p && isVal(p) ? 'validados' : p && isEi(p) ? 'edint' : p && isIns(p) ? 'inserts' : p && !isBrief(p) ? 'processos' : 'briefs'; }
     else if (r.name === 'calendario') { body = viewCalendario(); title = 'Calendário'; }
     else if (r.name === 'controle') { body = viewControle(); title = 'Controle'; }
